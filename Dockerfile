@@ -16,8 +16,11 @@ ADD . /app
 # Build
 RUN make build
 
-# Run
-CMD ["/app/bin/tomatobot"]
+FROM alpine:latest
 
-# TODO copy bin to new image
+WORKDIR /app
+
+COPY --from=build /app/bin /app
+
+CMD ["/app/tomatobot"]
 
