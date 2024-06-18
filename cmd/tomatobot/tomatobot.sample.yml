@@ -1,0 +1,3 @@
+tomatobot:
+  redis: "localhost:6379"
+  postgres: "postgresql://user:secret@localhost"
