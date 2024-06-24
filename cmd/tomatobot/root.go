@@ -25,7 +25,7 @@ var COMMIT = func() string {
 	return ""
 }()
 
-//go:generate sh -c "printf %s $(git describe) > VERSION.txt"
+//go:generate sh -c "printf %s $(git describe --tags) > VERSION.txt"
 //go:embed VERSION.txt
 var embedVERSION string
 
@@ -62,7 +62,7 @@ func Execute() {
 func executeBot(args []string) error {
 	logger := getLogger()
 
-	logger.Info().Str("commit", COMMIT).Msgf("Tomatobot v%s Starting!", version)
+	logger.Info().Str("commit", COMMIT).Msgf("Tomatobot %s Starting!", version)
 
 	return nil
 
