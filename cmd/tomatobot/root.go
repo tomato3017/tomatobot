@@ -34,7 +34,7 @@ var version = func() string {
 		return embedVERSION
 	}
 
-	return "DEV"
+	return "0.0.0-DEV"
 }()
 
 var (
