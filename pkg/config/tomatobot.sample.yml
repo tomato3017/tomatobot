@@ -2,3 +2,5 @@ tomatobot:
   token: "testtoken"
   redis: "localhost:6379"
   postgres: "postgresql://user:secret@localhost"
+  command_timeout: "5m"
+  debug: "true"

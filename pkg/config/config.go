@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/kelseyhightower/envconfig"
@@ -13,8 +14,21 @@ type Config struct {
 	TomatoBot
 }
 
+type LogLevel string
+
+const (
+	LogLevelDebug LogLevel = "debug"
+	LogLevelInfo  LogLevel = "info"
+	LogLevelWarn  LogLevel = "warn"
+	LogLevelError LogLevel = "error"
+	LogLevelTrace LogLevel = "trace"
+)
+
 type TomatoBot struct {
-	Token string `yaml:"token" envconfig:"TOKEN" validate:"required"`
+	LogLevel       LogLevel      `yaml:"loglevel" envconfig:"LOGLEVEL"`
+	Debug          bool          `yaml:"debug" envconfig:"DEBUG"`
+	Token          string        `yaml:"token" envconfig:"TOKEN" validate:"required"`
+	CommandTimeout time.Duration `yaml:"command_timeout" envconfig:"COMMAND_TIMEOUT" default:"1m"`
 }
 
 func (c *Config) Validate() error {

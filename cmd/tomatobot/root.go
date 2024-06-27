@@ -4,10 +4,17 @@ Copyright © 2024 Anthony Kirksey
 package tomatobot
 
 import (
+	"context"
 	_ "embed"
+	"fmt"
+	"github.com/oklog/run"
 	"github.com/rs/zerolog"
+	"github.com/tomato3017/tomatobot/pkg/bot"
+	"github.com/tomato3017/tomatobot/pkg/config"
 	"os"
+	"os/signal"
 	"runtime/debug"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -64,16 +71,58 @@ func executeBot(args []string) error {
 
 	logger.Info().Str("commit", COMMIT).Msgf("Tomatobot %s Starting!", version)
 
+	// Load the configuration file
+	logger.Info().Msg("Loading configuration file")
+	cfg, err := config.NewConfigFromFile(cfgFile)
+	if err != nil {
+		return fmt.Errorf("failed to load configuration file: %w", err)
+	}
+
+	logger = deriveLoggerFromLevel(logger, cfg.TomatoBot.LogLevel)
+	logger.Debug().Any("config", cfg).Msg("Loaded configuration")
+
+	tomatoBot := bot.NewTomatobot(cfg, logger)
+
+	runGrp := run.Group{}
+	ctx, ctxCf := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer ctxCf()
+
+	runGrp.Add(func() error {
+		return tomatoBot.Run(ctx)
+	}, func(err error) {
+		ctxCf()
+	})
+
+	if err := runGrp.Run(); err != nil {
+		logger.Error().Err(err).Msg("error running bot")
+		os.Exit(1)
+	}
+
 	return nil
 
+}
+
+func deriveLoggerFromLevel(logger zerolog.Logger, level config.LogLevel) zerolog.Logger {
+	switch level {
+	case config.LogLevelDebug:
+		return logger.Level(zerolog.DebugLevel)
+	case config.LogLevelInfo:
+		return logger.Level(zerolog.InfoLevel)
+	case config.LogLevelWarn:
+		return logger.Level(zerolog.WarnLevel)
+	case config.LogLevelError:
+		return logger.Level(zerolog.ErrorLevel)
+	case config.LogLevelTrace:
+		return logger.Level(zerolog.TraceLevel)
+	default:
+		return logger.Level(zerolog.InfoLevel)
+	}
 }
 
 func getLogger() zerolog.Logger {
 	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
 
 	log := zerolog.New(output).With().Timestamp().Logger()
-
-	log.Info().Str("foo", "bar").Msg("Hello World")
 
 	return log
 }
