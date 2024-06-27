@@ -16,3 +16,8 @@ type TomatobotCommand interface {
 	Description() string
 	Help() string
 }
+
+// TODO add wrapper to tgbot to allow for easier testing and to allow interception of calls
+//type TGBotCapable interface {
+//	tgbotapi.BotAPI
+//}
