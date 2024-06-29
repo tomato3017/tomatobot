@@ -7,5 +7,6 @@ import (
 
 type BotModule interface {
 	Initialize(ctx context.Context, params modulemodels.InitializeParameters) error
+	Start(ctx context.Context) error
 	Shutdown(ctx context.Context) error
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/tomato3017/tomatobot/pkg/util"
 )
 
 type MyIdCmd struct {
@@ -11,14 +12,8 @@ type MyIdCmd struct {
 }
 
 func (m *MyIdCmd) Execute(ctx context.Context, msg *tgbotapi.Message) error {
-	_, err := m.tgbot.Send(tgbotapi.MessageConfig{
-		BaseChat: tgbotapi.BaseChat{
-			ChatID:           msg.Chat.ID,
-			ReplyToMessageID: msg.MessageID,
-		},
-		Text:                  fmt.Sprintf("Your ID is %d and the Chat ID is %d", msg.From.ID, msg.Chat.ID),
-		DisableWebPagePreview: false,
-	})
+	_, err := m.tgbot.Send(util.NewMessagePrivate(*msg,
+		fmt.Sprintf("Your ID is %d and the Chat ID is %d", msg.From.ID, msg.Chat.ID)))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}

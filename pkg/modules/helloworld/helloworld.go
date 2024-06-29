@@ -7,11 +7,15 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/tomato3017/tomatobot/pkg/modules"
 	modulemodels "github.com/tomato3017/tomatobot/pkg/modules/models"
+	"github.com/tomato3017/tomatobot/pkg/notifications"
+	"time"
 )
 
 type HelloWorldMod struct {
 	tgbot  *tgbotapi.BotAPI
 	logger zerolog.Logger
+
+	publisher notifications.Publisher
 }
 
 var _ modules.BotModule = &HelloWorldMod{}
@@ -30,6 +34,28 @@ func (h *HelloWorldMod) Initialize(ctx context.Context, params modulemodels.Init
 	if err != nil {
 		return fmt.Errorf("failed to register chat callback: %w", err)
 	}
+
+	h.publisher = params.Notifications
+
+	return nil
+}
+
+func (h *HelloWorldMod) Start(ctx context.Context) error {
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+
+		for {
+			select {
+			case <-ctx.Done():
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				h.logger.Trace().Msg("Publishing hello message")
+				h.publisher.Publish(notifications.Message{Topic: "helloworld.sometopic", Msg: "Hello, World!"})
+			}
+		}
+
+	}()
 
 	return nil
 }

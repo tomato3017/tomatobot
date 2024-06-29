@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"github.com/tomato3017/tomatobot/pkg/bot/models"
 	"github.com/tomato3017/tomatobot/pkg/modules/myid"
+	"github.com/tomato3017/tomatobot/pkg/notifications"
+	"github.com/tomato3017/tomatobot/pkg/util"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -24,7 +26,11 @@ type Tomatobot struct {
 	moduleRegistry  map[string]modules.BotModule
 	commandRegistry map[string]models.TomatobotCommand
 	chatCallbacks   map[string]func(ctx context.Context, msg tgbotapi.Message)
+
+	notiPublisher *notifications.NotificationPublisher
 }
+
+var _ models.TomatobotInstance = &Tomatobot{}
 
 func (t *Tomatobot) RegisterChatCallback(name string, handler func(ctx context.Context, msg tgbotapi.Message)) error {
 	if _, ok := t.chatCallbacks[name]; ok {
@@ -59,17 +65,38 @@ func (t *Tomatobot) Run(ctx context.Context) error {
 	tgbot.Debug = t.cfg.Debug
 	t.logger.Info().Msg("Telegram bot authorized successfully")
 
+	// Initialize the notification publisher
+	t.notiPublisher = notifications.NewNotificationPublisher(tgbot,
+		notifications.WithLogger(t.logger.With().Str("module", "notifications").Logger()))
+
 	// Initialize modules
 	for name, mod := range t.moduleRegistry {
 		t.logger.Info().Msgf("Initializing module: %s", name)
 		err := mod.Initialize(ctx, modulemodels.InitializeParameters{
-			Cfg:       t.cfg,
-			TgBot:     tgbot,
-			Tomatobot: t,
-			Logger:    t.logger.With().Str("module", name).Logger(),
+			Cfg:           t.cfg,
+			TgBot:         tgbot,
+			Tomatobot:     t,
+			Logger:        t.logger.With().Str("module", name).Logger(),
+			Notifications: t.notiPublisher,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to initialize module %s: %w", name, err)
+		}
+	}
+
+	// Start notification publisher
+	err = t.notiPublisher.Start(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start notification publisher: %w", err)
+	}
+	defer util.CloseSafely(t.notiPublisher)
+
+	//TODO extract to own function
+	for name, module := range t.moduleRegistry {
+		t.logger.Trace().Msgf("Starting module: %s", name)
+		err := module.Start(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to start module %s: %w", name, err)
 		}
 	}
 
