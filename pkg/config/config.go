@@ -29,6 +29,15 @@ type TomatoBot struct {
 	Debug          bool          `yaml:"debug" envconfig:"DEBUG"`
 	Token          string        `yaml:"token" envconfig:"TOKEN" validate:"required"`
 	CommandTimeout time.Duration `yaml:"command_timeout" envconfig:"COMMAND_TIMEOUT" default:"1m"`
+	AllModules     *bool         `yaml:"all_modules"`
+	ModulesToLoad  []string      `yaml:"modules"`
+	Database       Database      `yaml:"database"`
+}
+
+type Database struct {
+	ConnectionString string  `yaml:"connection_string" envconfig:"DATABASE_CONNECTION_STRING" validate:"required"`
+	LogQueries       bool    `yaml:"log_queries" envconfig:"DATABASE_LOG_QUERIES"`
+	DbType           *DBType `yaml:"type" envconfig:"DATABASE_TYPE" validate:"required"` //Intentional as we need to make sure the zero value isn't the first value
 }
 
 func (c *Config) Validate() error {

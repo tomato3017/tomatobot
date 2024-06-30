@@ -15,3 +15,14 @@ func NewMessagePrivate(msg tgbotapi.Message, text string) tgbotapi.MessageConfig
 		}
 	}
 }
+
+func NewMessageReply(msg tgbotapi.Message, text string) tgbotapi.MessageConfig {
+	return tgbotapi.MessageConfig{
+		BaseChat: tgbotapi.BaseChat{
+			ChatID:           msg.Chat.ID,
+			ReplyToMessageID: msg.MessageID,
+		},
+		Text:                  text,
+		DisableWebPagePreview: false,
+	}
+}

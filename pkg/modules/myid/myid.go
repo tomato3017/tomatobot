@@ -5,7 +5,6 @@ import (
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/tomato3017/tomatobot/pkg/modules"
-	modulemodels "github.com/tomato3017/tomatobot/pkg/modules/models"
 )
 
 type MyIdMod struct {
@@ -14,7 +13,7 @@ type MyIdMod struct {
 
 var _ modules.BotModule = &MyIdMod{}
 
-func (m *MyIdMod) Initialize(ctx context.Context, params modulemodels.InitializeParameters) error {
+func (m *MyIdMod) Initialize(ctx context.Context, params modules.InitializeParameters) error {
 	m.tgbot = params.TgBot
 
 	err := params.Tomatobot.RegisterCommand("myid", &MyIdCmd{tgbot: m.tgbot})

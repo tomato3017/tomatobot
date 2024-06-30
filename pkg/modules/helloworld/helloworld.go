@@ -6,7 +6,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog"
 	"github.com/tomato3017/tomatobot/pkg/modules"
-	modulemodels "github.com/tomato3017/tomatobot/pkg/modules/models"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
 	"time"
 )
@@ -20,7 +19,7 @@ type HelloWorldMod struct {
 
 var _ modules.BotModule = &HelloWorldMod{}
 
-func (h *HelloWorldMod) Initialize(ctx context.Context, params modulemodels.InitializeParameters) error {
+func (h *HelloWorldMod) Initialize(ctx context.Context, params modules.InitializeParameters) error {
 	h.logger = params.Logger
 	h.tgbot = params.TgBot
 

@@ -5,9 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/tomato3017/tomatobot/pkg/bot/models"
+	"github.com/tomato3017/tomatobot/pkg/db"
 	"github.com/tomato3017/tomatobot/pkg/modules/myid"
+	"github.com/tomato3017/tomatobot/pkg/modules/subscribe"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
+	"github.com/tomato3017/tomatobot/pkg/sqlmigrate"
 	"github.com/tomato3017/tomatobot/pkg/util"
+	"github.com/uptrace/bun"
+	"slices"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -15,7 +20,6 @@ import (
 	"github.com/tomato3017/tomatobot/pkg/config"
 	"github.com/tomato3017/tomatobot/pkg/modules"
 	"github.com/tomato3017/tomatobot/pkg/modules/helloworld"
-	modulemodels "github.com/tomato3017/tomatobot/pkg/modules/models"
 )
 
 type Tomatobot struct {
@@ -24,10 +28,13 @@ type Tomatobot struct {
 	tgbot  *tgbotapi.BotAPI
 
 	moduleRegistry  map[string]modules.BotModule
+	loadedModules   map[string]modules.BotModule
 	commandRegistry map[string]models.TomatobotCommand
 	chatCallbacks   map[string]func(ctx context.Context, msg tgbotapi.Message)
 
 	notiPublisher *notifications.NotificationPublisher
+
+	dbConn *bun.DB
 }
 
 var _ models.TomatobotInstance = &Tomatobot{}
@@ -56,6 +63,15 @@ func (t *Tomatobot) RegisterCommand(name string, commandHandler models.Tomatobot
 var _ models.TomatobotInstance = &Tomatobot{}
 
 func (t *Tomatobot) Run(ctx context.Context) error {
+	// Get the DB connection
+	err := t.openDbConnection(ctx)
+	if err != nil {
+		return err
+	}
+	defer util.CloseSafely(t.dbConn)
+
+	t.logger.Debug().Msg("Database connection successful")
+
 	tgbot, err := tgbotapi.NewBotAPI(t.cfg.TomatoBot.Token)
 	if err != nil {
 		return fmt.Errorf("failed to create telegram bot: %w", err)
@@ -66,22 +82,13 @@ func (t *Tomatobot) Run(ctx context.Context) error {
 	t.logger.Info().Msg("Telegram bot authorized successfully")
 
 	// Initialize the notification publisher
-	t.notiPublisher = notifications.NewNotificationPublisher(tgbot,
+	t.notiPublisher = notifications.NewNotificationPublisher(tgbot, t.dbConn,
 		notifications.WithLogger(t.logger.With().Str("module", "notifications").Logger()))
 
 	// Initialize modules
-	for name, mod := range t.moduleRegistry {
-		t.logger.Info().Msgf("Initializing module: %s", name)
-		err := mod.Initialize(ctx, modulemodels.InitializeParameters{
-			Cfg:           t.cfg,
-			TgBot:         tgbot,
-			Tomatobot:     t,
-			Logger:        t.logger.With().Str("module", name).Logger(),
-			Notifications: t.notiPublisher,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to initialize module %s: %w", name, err)
-		}
+	err = t.initializeModules(ctx, tgbot)
+	if err != nil {
+		return err
 	}
 
 	// Start notification publisher
@@ -91,8 +98,7 @@ func (t *Tomatobot) Run(ctx context.Context) error {
 	}
 	defer util.CloseSafely(t.notiPublisher)
 
-	//TODO extract to own function
-	for name, module := range t.moduleRegistry {
+	for name, module := range t.loadedModules {
 		t.logger.Trace().Msgf("Starting module: %s", name)
 		err := module.Start(ctx)
 		if err != nil {
@@ -120,6 +126,51 @@ func (t *Tomatobot) Run(ctx context.Context) error {
 		t.logger.Error().Err(err).Msg("Failed to shutdown bot")
 	}
 
+	return nil
+}
+
+func (t *Tomatobot) openDbConnection(ctx context.Context) error {
+	t.logger.Trace().Msg("Getting DB connection")
+	dbConn, err := db.GetDbConnection(t.cfg.Database)
+	if err != nil {
+		return fmt.Errorf("failed to get DB connection: %w", err)
+	}
+	t.dbConn = dbConn
+
+	t.logger.Debug().Msg("Migrating DB schema")
+	numMigrations, err := sqlmigrate.MigrateDbSchema(ctx, dbConn)
+	if err != nil {
+		return fmt.Errorf("failed to migrate DB schema: %w", err)
+	}
+
+	t.logger.Debug().Msgf("DB Migrations successful. %d migrations applied", numMigrations)
+
+	return nil
+}
+
+func (t *Tomatobot) initializeModules(ctx context.Context, tgbot *tgbotapi.BotAPI) error {
+	for name, mod := range t.moduleRegistry {
+		if t.cfg.TomatoBot.AllModules != nil && !*t.cfg.TomatoBot.AllModules {
+			if !slices.Contains(t.cfg.ModulesToLoad, name) {
+				t.logger.Debug().Msgf("Skipping module: %s", name)
+				continue
+			}
+		}
+		t.logger.Info().Msgf("Initializing module: %s", name)
+		err := mod.Initialize(ctx, modules.InitializeParameters{
+			Cfg:           t.cfg,
+			TgBot:         tgbot,
+			Tomatobot:     t,
+			Logger:        t.logger.With().Str("module", name).Logger(),
+			Notifications: t.notiPublisher,
+			DbConn:        t.dbConn,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to initialize module %s: %w", name, err)
+		}
+
+		t.loadedModules[name] = mod
+	}
 	return nil
 }
 
@@ -168,8 +219,15 @@ func (t *Tomatobot) handleCommand(ctx context.Context, msg *tgbotapi.Message) {
 		defer cancel()
 
 		if err := t.handleCommandThread(ctx, msg); err != nil {
-			// TODO error back to user
 			t.logger.Error().Err(err).Msg("Failed to handle command")
+			t.tgbot.Send(tgbotapi.MessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:           msg.Chat.ID,
+					ReplyToMessageID: msg.MessageID,
+				},
+				Text:                  fmt.Sprintf("Error: %s", err.Error()),
+				DisableWebPagePreview: false,
+			})
 		}
 	}()
 }
@@ -235,6 +293,7 @@ func NewTomatobot(cfg config.Config, logger zerolog.Logger) *Tomatobot {
 		cfg:             cfg,
 		logger:          logger,
 		moduleRegistry:  botRegistry,
+		loadedModules:   make(map[string]modules.BotModule),
 		commandRegistry: make(map[string]models.TomatobotCommand),
 		chatCallbacks:   make(map[string]func(ctx context.Context, msg tgbotapi.Message)),
 	}
@@ -244,5 +303,6 @@ func getModuleRegistry() map[string]modules.BotModule {
 	return map[string]modules.BotModule{
 		"helloworld": &helloworld.HelloWorldMod{},
 		"myid":       &myid.MyIdMod{},
+		"subscribe":  &subscribe.SubscribeModule{},
 	}
 }

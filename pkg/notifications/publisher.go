@@ -2,18 +2,25 @@ package notifications
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog"
+	dbmodels "github.com/tomato3017/tomatobot/pkg/bot/models/db"
+	"github.com/uptrace/bun"
 	"regexp"
 	"strings"
 	"sync"
 )
 
+var (
+	ErrSubExists = errors.New("subscription already exists")
+)
+
 type Publisher interface {
-	Subscribe(sub Subscriber)
+	Subscribe(sub Subscriber) error
 	Publish(msg Message)
-	Unsubscribe(sub Subscriber)
+	Unsubscribe(sub Subscriber) error
 }
 
 type Message struct {
@@ -24,6 +31,14 @@ type Message struct {
 type Subscriber struct {
 	TopicPattern string
 	ChatId       int64
+	//TODO priority filter?
+}
+
+func (s *Subscriber) DbModel() *dbmodels.Subscriptions {
+	return &dbmodels.Subscriptions{
+		ChatID:       s.ChatId,
+		TopicPattern: s.TopicPattern,
+	}
 }
 
 type NotificationPublisher struct {
@@ -32,6 +47,7 @@ type NotificationPublisher struct {
 	cancelFunc context.CancelFunc
 
 	subscribers []Subscriber
+	dbConn      bun.IDB
 
 	tgbot  *tgbotapi.BotAPI
 	logger zerolog.Logger
@@ -39,12 +55,13 @@ type NotificationPublisher struct {
 	sublck sync.RWMutex
 }
 
-func NewNotificationPublisher(tgbot *tgbotapi.BotAPI, options ...PublisherOptions) *NotificationPublisher {
+func NewNotificationPublisher(tgbot *tgbotapi.BotAPI, dbConn bun.IDB, options ...PublisherOptions) *NotificationPublisher {
 	publisher := NotificationPublisher{
 		bus:         make(chan Message),
 		subscribers: make([]Subscriber, 0),
 		tgbot:       tgbot,
 		logger:      zerolog.Logger{},
+		dbConn:      dbConn,
 	}
 
 	for _, option := range options {
@@ -54,21 +71,59 @@ func NewNotificationPublisher(tgbot *tgbotapi.BotAPI, options ...PublisherOption
 	return &publisher
 }
 
-func (n *NotificationPublisher) Subscribe(sub Subscriber) {
-	n.sublck.Lock()
-	defer n.sublck.Unlock()
-	n.subscribers = append(n.subscribers, sub)
+func (n *NotificationPublisher) updateSubsFromDb() error {
+	subs := make([]dbmodels.Subscriptions, 0)
+
+	err := n.dbConn.NewSelect().Model(&subs).Scan(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get subscriptions: %w", err)
+	}
+
+	for _, sub := range subs {
+		n.subscribers = append(n.subscribers, Subscriber{
+			ChatId:       sub.ChatID,
+			TopicPattern: sub.TopicPattern,
+		})
+	}
+
+	return nil
 }
 
-func (n *NotificationPublisher) Unsubscribe(sub Subscriber) {
+func (n *NotificationPublisher) Subscribe(sub Subscriber) error {
 	n.sublck.Lock()
 	defer n.sublck.Unlock()
-	for i, s := range n.subscribers {
-		if s.ChatId == sub.ChatId && s.TopicPattern == sub.TopicPattern {
+
+	_, err := n.dbConn.NewInsert().Model(sub.DbModel()).Exec(context.TODO())
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return ErrSubExists
+		}
+		return fmt.Errorf("failed to insert subscription: %w", err)
+	}
+
+	n.subscribers = append(n.subscribers, sub)
+	return nil
+}
+
+func (n *NotificationPublisher) Unsubscribe(sub Subscriber) error {
+	n.sublck.Lock()
+	defer n.sublck.Unlock()
+	for i, currentSub := range n.subscribers {
+		if currentSub.ChatId == sub.ChatId && currentSub.TopicPattern == sub.TopicPattern {
+			_, err := n.dbConn.NewDelete().Model(sub.DbModel()).
+				Where("chat_id = ?", sub.ChatId).
+				Where("topic_pattern = ?", sub.TopicPattern).
+				Exec(context.TODO())
+
+			if err != nil {
+				return fmt.Errorf("failed to delete subscription: %w", err)
+			}
+
 			n.subscribers = append(n.subscribers[:i], n.subscribers[i+1:]...)
-			return
+			return nil
 		}
 	}
+	return nil
 }
 
 func (n *NotificationPublisher) Publish(msg Message) {
