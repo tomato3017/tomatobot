@@ -8,7 +8,7 @@ import (
 
 type TomatobotInstance interface {
 	RegisterCommand(name string, command command.TomatobotCommand) error
-	RegisterSimpleCommand(name, desc, help string, callback func(ctx context.Context, msg *tgbotapi.Message) error) error
+	RegisterSimpleCommand(name, desc, help string, callback command.CommandCallback) error
 	RegisterChatCallback(name string, handler func(ctx context.Context, msg tgbotapi.Message)) error
 }
 

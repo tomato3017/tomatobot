@@ -120,7 +120,7 @@ func (_c *MockTomatobotInstance_RegisterCommand_Call) RunAndReturn(run func(stri
 }
 
 // RegisterSimpleCommand provides a mock function with given fields: name, desc, help, callback
-func (_m *MockTomatobotInstance) RegisterSimpleCommand(name string, desc string, help string, callback func(context.Context, *tgbotapi.Message) error) error {
+func (_m *MockTomatobotInstance) RegisterSimpleCommand(name string, desc string, help string, callback command.CommandCallback) error {
 	ret := _m.Called(name, desc, help, callback)
 
 	if len(ret) == 0 {
@@ -128,7 +128,7 @@ func (_m *MockTomatobotInstance) RegisterSimpleCommand(name string, desc string,
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string, string, func(context.Context, *tgbotapi.Message) error) error); ok {
+	if rf, ok := ret.Get(0).(func(string, string, string, command.CommandCallback) error); ok {
 		r0 = rf(name, desc, help, callback)
 	} else {
 		r0 = ret.Error(0)
@@ -146,14 +146,14 @@ type MockTomatobotInstance_RegisterSimpleCommand_Call struct {
 //   - name string
 //   - desc string
 //   - help string
-//   - callback func(context.Context , *tgbotapi.Message) error
+//   - callback command.CommandCallback
 func (_e *MockTomatobotInstance_Expecter) RegisterSimpleCommand(name interface{}, desc interface{}, help interface{}, callback interface{}) *MockTomatobotInstance_RegisterSimpleCommand_Call {
 	return &MockTomatobotInstance_RegisterSimpleCommand_Call{Call: _e.mock.On("RegisterSimpleCommand", name, desc, help, callback)}
 }
 
-func (_c *MockTomatobotInstance_RegisterSimpleCommand_Call) Run(run func(name string, desc string, help string, callback func(context.Context, *tgbotapi.Message) error)) *MockTomatobotInstance_RegisterSimpleCommand_Call {
+func (_c *MockTomatobotInstance_RegisterSimpleCommand_Call) Run(run func(name string, desc string, help string, callback command.CommandCallback)) *MockTomatobotInstance_RegisterSimpleCommand_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(string), args[3].(func(context.Context, *tgbotapi.Message) error))
+		run(args[0].(string), args[1].(string), args[2].(string), args[3].(command.CommandCallback))
 	})
 	return _c
 }
@@ -163,7 +163,7 @@ func (_c *MockTomatobotInstance_RegisterSimpleCommand_Call) Return(_a0 error) *M
 	return _c
 }
 
-func (_c *MockTomatobotInstance_RegisterSimpleCommand_Call) RunAndReturn(run func(string, string, string, func(context.Context, *tgbotapi.Message) error) error) *MockTomatobotInstance_RegisterSimpleCommand_Call {
+func (_c *MockTomatobotInstance_RegisterSimpleCommand_Call) RunAndReturn(run func(string, string, string, command.CommandCallback) error) *MockTomatobotInstance_RegisterSimpleCommand_Call {
 	_c.Call.Return(run)
 	return _c
 }

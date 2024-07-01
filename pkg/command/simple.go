@@ -2,16 +2,19 @@ package command
 
 import (
 	"context"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+type CommandCallback func(ctx context.Context, params CommandParams) error
+
 type SimpleCommand struct {
-	callback func(ctx context.Context, msg *tgbotapi.Message) error
+	callback CommandCallback
 	desc     string
 	help     string
 }
 
-func NewSimpleCommand(callback func(ctx context.Context, msg *tgbotapi.Message) error, desc, help string) *SimpleCommand {
+var _ TomatobotCommand = &SimpleCommand{}
+
+func NewSimpleCommand(callback CommandCallback, desc, help string) *SimpleCommand {
 	return &SimpleCommand{
 		callback: callback,
 		desc:     desc,
@@ -19,8 +22,8 @@ func NewSimpleCommand(callback func(ctx context.Context, msg *tgbotapi.Message) 
 	}
 }
 
-func (s *SimpleCommand) Execute(ctx context.Context, msg *tgbotapi.Message) error {
-	return s.callback(ctx, msg)
+func (s *SimpleCommand) Execute(ctx context.Context, params CommandParams) error {
+	return s.callback(ctx, params)
 }
 
 func (s *SimpleCommand) Description() string {

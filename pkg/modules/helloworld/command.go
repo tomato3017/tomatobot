@@ -13,8 +13,8 @@ type HelloWorldCmd struct {
 
 var _ command.TomatobotCommand = &HelloWorldCmd{}
 
-func (h *HelloWorldCmd) Execute(ctx context.Context, msg *tgbotapi.Message) error {
-
+func (h *HelloWorldCmd) Execute(ctx context.Context, params command.CommandParams) error {
+	msg := params.Message
 	_, err := h.tgbot.Send(tgbotapi.MessageConfig{
 		BaseChat: tgbotapi.BaseChat{
 			ChatID:           msg.Chat.ID,

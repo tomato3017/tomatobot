@@ -238,13 +238,20 @@ func (t *Tomatobot) handleCommandThread(ctx context.Context, msg *tgbotapi.Messa
 		return t.handleHelpCommand(ctx, msg)
 	}
 
-	command := strings.ToLower(msg.Command())
-	cmdHandler, ok := t.commandRegistry[command]
+	msgCommand := strings.ToLower(msg.Command())
+	cmdHandler, ok := t.commandRegistry[msgCommand]
 	if !ok {
-		return fmt.Errorf("command %s not found", command)
+		return fmt.Errorf("command %s not found", msgCommand)
 	}
 
-	return cmdHandler.Execute(ctx, msg)
+	args := strings.Split(msg.CommandArguments(), " ")
+	params := command.CommandParams{
+		CommandName: msgCommand,
+		Args:        args,
+		Message:     msg,
+	}
+
+	return cmdHandler.Execute(ctx, params)
 }
 
 func (t *Tomatobot) handleChatMessage(ctx context.Context, msg *tgbotapi.Message) error {
@@ -287,7 +294,7 @@ func (t *Tomatobot) handleHelpCommand(ctx context.Context, msg *tgbotapi.Message
 	return nil
 }
 
-func (t *Tomatobot) RegisterSimpleCommand(name, desc, help string, callback func(ctx context.Context, msg *tgbotapi.Message) error) error {
+func (t *Tomatobot) RegisterSimpleCommand(name, desc, help string, callback command.CommandCallback) error {
 	cmd := command.NewSimpleCommand(callback, desc, help)
 	return t.RegisterCommand(name, cmd)
 }

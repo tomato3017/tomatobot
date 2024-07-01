@@ -21,6 +21,7 @@ type Publisher interface {
 	Subscribe(sub Subscriber) error
 	Publish(msg Message)
 	Unsubscribe(sub Subscriber) error
+	GetSubscriptions(chatId int64) ([]dbmodels.Subscriptions, error)
 }
 
 type Message struct {
@@ -55,6 +56,8 @@ type NotificationPublisher struct {
 	sublck sync.RWMutex
 }
 
+var _ Publisher = &NotificationPublisher{}
+
 func NewNotificationPublisher(tgbot *tgbotapi.BotAPI, dbConn bun.IDB, options ...PublisherOptions) *NotificationPublisher {
 	publisher := NotificationPublisher{
 		bus:         make(chan Message),
@@ -87,6 +90,17 @@ func (n *NotificationPublisher) updateSubsFromDb() error {
 	}
 
 	return nil
+}
+
+func (n *NotificationPublisher) GetSubscriptions(chatId int64) ([]dbmodels.Subscriptions, error) {
+	subs := make([]dbmodels.Subscriptions, 0)
+
+	err := n.dbConn.NewSelect().Model(&subs).Where("chat_id = ?", chatId).Scan(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get subscriptions: %w", err)
+	}
+
+	return subs, nil
 }
 
 func (n *NotificationPublisher) Subscribe(sub Subscriber) error {

@@ -10,7 +10,7 @@ type SubscribeModule struct {
 }
 
 func (s *SubscribeModule) Initialize(ctx context.Context, params modules.InitializeParameters) error {
-	err := params.Tomatobot.RegisterCommand("subscribe",
+	err := params.Tomatobot.RegisterCommand("sub",
 		&SubscribeCmd{tgbot: params.TgBot,
 			publisher: params.Notifications,
 			logger:    params.Logger})

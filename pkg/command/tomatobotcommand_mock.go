@@ -5,7 +5,6 @@ package command
 import (
 	context "context"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -67,17 +66,17 @@ func (_c *MockTomatobotCommand_Description_Call) RunAndReturn(run func() string)
 	return _c
 }
 
-// Execute provides a mock function with given fields: ctx, msg
-func (_m *MockTomatobotCommand) Execute(ctx context.Context, msg *tgbotapi.Message) error {
-	ret := _m.Called(ctx, msg)
+// Execute provides a mock function with given fields: ctx, params
+func (_m *MockTomatobotCommand) Execute(ctx context.Context, params CommandParams) error {
+	ret := _m.Called(ctx, params)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Execute")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *tgbotapi.Message) error); ok {
-		r0 = rf(ctx, msg)
+	if rf, ok := ret.Get(0).(func(context.Context, CommandParams) error); ok {
+		r0 = rf(ctx, params)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -92,14 +91,14 @@ type MockTomatobotCommand_Execute_Call struct {
 
 // Execute is a helper method to define mock.On call
 //   - ctx context.Context
-//   - msg *tgbotapi.Message
-func (_e *MockTomatobotCommand_Expecter) Execute(ctx interface{}, msg interface{}) *MockTomatobotCommand_Execute_Call {
-	return &MockTomatobotCommand_Execute_Call{Call: _e.mock.On("Execute", ctx, msg)}
+//   - params CommandParams
+func (_e *MockTomatobotCommand_Expecter) Execute(ctx interface{}, params interface{}) *MockTomatobotCommand_Execute_Call {
+	return &MockTomatobotCommand_Execute_Call{Call: _e.mock.On("Execute", ctx, params)}
 }
 
-func (_c *MockTomatobotCommand_Execute_Call) Run(run func(ctx context.Context, msg *tgbotapi.Message)) *MockTomatobotCommand_Execute_Call {
+func (_c *MockTomatobotCommand_Execute_Call) Run(run func(ctx context.Context, params CommandParams)) *MockTomatobotCommand_Execute_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*tgbotapi.Message))
+		run(args[0].(context.Context), args[1].(CommandParams))
 	})
 	return _c
 }
@@ -109,7 +108,7 @@ func (_c *MockTomatobotCommand_Execute_Call) Return(_a0 error) *MockTomatobotCom
 	return _c
 }
 
-func (_c *MockTomatobotCommand_Execute_Call) RunAndReturn(run func(context.Context, *tgbotapi.Message) error) *MockTomatobotCommand_Execute_Call {
+func (_c *MockTomatobotCommand_Execute_Call) RunAndReturn(run func(context.Context, CommandParams) error) *MockTomatobotCommand_Execute_Call {
 	_c.Call.Return(run)
 	return _c
 }

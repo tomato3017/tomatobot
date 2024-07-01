@@ -5,6 +5,7 @@ import (
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog"
+	"github.com/tomato3017/tomatobot/pkg/command"
 	"github.com/tomato3017/tomatobot/pkg/modules"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
 	"github.com/tomato3017/tomatobot/pkg/util"
@@ -31,8 +32,8 @@ func (h *HelloWorldMod) Initialize(ctx context.Context, params modules.Initializ
 	}
 
 	err = params.Tomatobot.RegisterSimpleCommand("hellotest", "Says hello to the world", "Executes the hello world command",
-		func(ctx context.Context, msg *tgbotapi.Message) error {
-			_, err := h.tgbot.Send(util.NewMessageReply(msg, "Hello, World2222!"))
+		func(ctx context.Context, params command.CommandParams) error {
+			_, err := h.tgbot.Send(util.NewMessageReply(params.Message, "Hello, World2222!"))
 			if err != nil {
 				return fmt.Errorf("failed to send message: %w", err)
 			}
