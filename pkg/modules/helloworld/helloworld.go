@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/tomato3017/tomatobot/pkg/modules"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
+	"github.com/tomato3017/tomatobot/pkg/util"
 	"time"
 )
 
@@ -28,6 +29,15 @@ func (h *HelloWorldMod) Initialize(ctx context.Context, params modules.Initializ
 	if err != nil {
 		return fmt.Errorf("failed to register command: %w", err)
 	}
+
+	err = params.Tomatobot.RegisterSimpleCommand("hellotest", "Says hello to the world", "Executes the hello world command",
+		func(ctx context.Context, msg *tgbotapi.Message) error {
+			_, err := h.tgbot.Send(util.NewMessageReply(msg, "Hello, World2222!"))
+			if err != nil {
+				return fmt.Errorf("failed to send message: %w", err)
+			}
+			return nil
+		})
 
 	err = params.Tomatobot.RegisterChatCallback("helloworld_listener", h.handleChatCallback)
 	if err != nil {

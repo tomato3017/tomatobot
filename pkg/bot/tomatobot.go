@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/tomato3017/tomatobot/pkg/bot/models"
+	"github.com/tomato3017/tomatobot/pkg/command"
 	"github.com/tomato3017/tomatobot/pkg/db"
 	"github.com/tomato3017/tomatobot/pkg/modules/myid"
 	"github.com/tomato3017/tomatobot/pkg/modules/subscribe"
@@ -29,7 +30,7 @@ type Tomatobot struct {
 
 	moduleRegistry  map[string]modules.BotModule
 	loadedModules   map[string]modules.BotModule
-	commandRegistry map[string]models.TomatobotCommand
+	commandRegistry map[string]command.TomatobotCommand
 	chatCallbacks   map[string]func(ctx context.Context, msg tgbotapi.Message)
 
 	notiPublisher *notifications.NotificationPublisher
@@ -50,7 +51,7 @@ func (t *Tomatobot) RegisterChatCallback(name string, handler func(ctx context.C
 	return nil
 }
 
-func (t *Tomatobot) RegisterCommand(name string, commandHandler models.TomatobotCommand) error {
+func (t *Tomatobot) RegisterCommand(name string, commandHandler command.TomatobotCommand) error {
 	t.logger.Debug().Msgf("Registering command: %s", name)
 	if _, ok := t.commandRegistry[name]; ok {
 		return fmt.Errorf("command %s already registered", name)
@@ -286,6 +287,11 @@ func (t *Tomatobot) handleHelpCommand(ctx context.Context, msg *tgbotapi.Message
 	return nil
 }
 
+func (t *Tomatobot) RegisterSimpleCommand(name, desc, help string, callback func(ctx context.Context, msg *tgbotapi.Message) error) error {
+	cmd := command.NewSimpleCommand(callback, desc, help)
+	return t.RegisterCommand(name, cmd)
+}
+
 func NewTomatobot(cfg config.Config, logger zerolog.Logger) *Tomatobot {
 	botRegistry := getModuleRegistry()
 
@@ -294,7 +300,7 @@ func NewTomatobot(cfg config.Config, logger zerolog.Logger) *Tomatobot {
 		logger:          logger,
 		moduleRegistry:  botRegistry,
 		loadedModules:   make(map[string]modules.BotModule),
-		commandRegistry: make(map[string]models.TomatobotCommand),
+		commandRegistry: make(map[string]command.TomatobotCommand),
 		chatCallbacks:   make(map[string]func(ctx context.Context, msg tgbotapi.Message)),
 	}
 }

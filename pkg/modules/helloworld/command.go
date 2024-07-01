@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/tomato3017/tomatobot/pkg/bot/models"
+	"github.com/tomato3017/tomatobot/pkg/command"
 )
 
 type HelloWorldCmd struct {
 	tgbot *tgbotapi.BotAPI
 }
 
-var _ models.TomatobotCommand = &HelloWorldCmd{}
+var _ command.TomatobotCommand = &HelloWorldCmd{}
 
 func (h *HelloWorldCmd) Execute(ctx context.Context, msg *tgbotapi.Message) error {
 

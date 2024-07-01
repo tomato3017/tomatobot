@@ -38,7 +38,7 @@ func (s *SubscribeCmd) Execute(ctx context.Context, msg *tgbotapi.Message) error
 		return fmt.Errorf("failed to subscribe: %w", err)
 	}
 
-	_, err := s.tgbot.Send(util.NewMessageReply(*msg, fmt.Sprintf("Subscribed to topic %s", args)))
+	_, err := s.tgbot.Send(util.NewMessageReply(msg, fmt.Sprintf("Subscribed to topic %s", args)))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
