@@ -8,46 +8,24 @@ import (
 	"github.com/tomato3017/tomatobot/pkg/command"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
 	"github.com/tomato3017/tomatobot/pkg/util"
+	mfmt "github.com/tomato3017/tomatobot/pkg/util/markdownfmt"
 	"regexp"
-	"strings"
 )
 
 var topicRegex = regexp.MustCompile(`(?m)^\w+[.\w]+[\w*]$`)
-var _ command.TomatobotCommand = &SubscribeCmd{}
+var _ command.TomatobotCommand = &SubCreateCmd{}
 
-type SubscribeCmd struct {
+type SubCreateCmd struct {
 	tgbot     *tgbotapi.BotAPI
 	publisher notifications.Publisher
 	logger    zerolog.Logger
 }
 
-func (s *SubscribeCmd) Execute(ctx context.Context, params command.CommandParams) error {
-	if len(params.Args) == 0 {
-		return fmt.Errorf("no operation provided")
-	}
-
-	operation := params.Args[0]
-	switch operation {
-	case string(OperationCreate):
-		if len(params.Args) < 2 {
-			return fmt.Errorf("no topic provided")
-		}
-
-		return s.subscribe(ctx, params.Message, params.Args[1])
-	case string(OperationList):
-		return s.list(ctx, params.Message)
-	case string(OperationUnsub): //TODO ensure that this will filter to the chat id
-		if len(params.Args) < 2 {
-			return fmt.Errorf("no topic id provided(use /subscribe list to get the id)")
-		}
-
-		return s.unsubscribe(ctx, params.Message, params.Args[1])
-	default:
-		return fmt.Errorf("unknown operation. Operations allowed: %v", []operations{OperationCreate, OperationList, OperationUnsub})
-	}
+func (s *SubCreateCmd) Execute(ctx context.Context, params command.CommandParams) error {
+	return s.subscribe(ctx, params.Message, params.Args[0])
 }
 
-func (s *SubscribeCmd) subscribe(ctx context.Context, msg *tgbotapi.Message, topic string) error {
+func (s *SubCreateCmd) subscribe(ctx context.Context, msg *tgbotapi.Message, topic string) error {
 	if topic == "" {
 		return fmt.Errorf("no topic provided")
 	}
@@ -60,11 +38,14 @@ func (s *SubscribeCmd) subscribe(ctx context.Context, msg *tgbotapi.Message, top
 		TopicPattern: topic,
 		ChatId:       msg.Chat.ID,
 	}
-	if err := s.publisher.Subscribe(sub); err != nil {
+
+	subId, err := s.publisher.Subscribe(sub)
+	if err != nil {
 		return fmt.Errorf("failed to subscribe: %w", err)
 	}
 
-	_, err := s.tgbot.Send(util.NewMessageReply(msg, fmt.Sprintf("Subscribed to topic %s", topic)))
+	_, err = s.tgbot.Send(util.NewMessageReply(msg, tgbotapi.ModeMarkdownV2,
+		mfmt.Sprintf("Subscribed to topic %m with id %m!", topic, subId)))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
@@ -72,45 +53,14 @@ func (s *SubscribeCmd) subscribe(ctx context.Context, msg *tgbotapi.Message, top
 	return nil
 }
 
-func (s *SubscribeCmd) Description() string {
+func (s *SubCreateCmd) Description() string {
 	return "Subscribe to a topic"
 }
 
-func (s *SubscribeCmd) Help() string {
+func (s *SubCreateCmd) Help() string {
 	return "/subscribe <topic> - Subscribe to a topic"
 }
 
-func (s *SubscribeCmd) list(ctx context.Context, message *tgbotapi.Message) error {
-	currentSubs, err := s.publisher.GetSubscriptions(message.Chat.ID)
-	if err != nil {
-		return fmt.Errorf("failed to get subscriptions: %w", err)
-	}
-
-	if len(currentSubs) == 0 {
-		_, err = s.tgbot.Send(util.NewMessageReply(message, "No subscriptions found"))
-		if err != nil {
-			return fmt.Errorf("failed to send message: %w", err)
-		}
-		return nil
-	}
-
-	outMsg := strings.Builder{}
-	outMsg.WriteString("Current subscriptions:\n")
-	outMsg.WriteString("ID - Topic\n")
-	outMsg.WriteString("```\n")
-	for _, sub := range currentSubs {
-		outMsg.WriteString(fmt.Sprintf("%d - %s\n", sub.ID, sub.TopicPattern))
-	}
-	outMsg.WriteString("```\n")
-
-	_, err = s.tgbot.Send(util.NewMessageReply(message, outMsg.String()))
-	if err != nil {
-		return fmt.Errorf("failed to send message: %w", err)
-	}
-
-	return nil
-}
-
-func (s *SubscribeCmd) unsubscribe(ctx context.Context, msg *tgbotapi.Message, topicID string) error {
+func (s *SubCreateCmd) unsubscribe(ctx context.Context, msg *tgbotapi.Message, topicID string) error {
 	return fmt.Errorf("not implemented")
 }

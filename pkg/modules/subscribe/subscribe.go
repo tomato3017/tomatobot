@@ -11,9 +11,19 @@ type SubscribeModule struct {
 
 func (s *SubscribeModule) Initialize(ctx context.Context, params modules.InitializeParameters) error {
 	err := params.Tomatobot.RegisterCommand("sub",
-		&SubscribeCmd{tgbot: params.TgBot,
+		&SubCreateCmd{tgbot: params.TgBot,
 			publisher: params.Notifications,
 			logger:    params.Logger})
+	if err != nil {
+		return fmt.Errorf("failed to register command: %w", err)
+	}
+
+	err = params.Tomatobot.RegisterCommand("sublist", &SubListCmd{publisher: params.Notifications, tgbot: params.TgBot})
+	if err != nil {
+		return fmt.Errorf("failed to register command: %w", err)
+	}
+
+	err = params.Tomatobot.RegisterCommand("unsub", &UnSubCmd{publisher: params.Notifications, tgbot: params.TgBot})
 	if err != nil {
 		return fmt.Errorf("failed to register command: %w", err)
 	}

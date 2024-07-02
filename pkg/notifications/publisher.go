@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	dbmodels "github.com/tomato3017/tomatobot/pkg/bot/models/db"
 	"github.com/uptrace/bun"
@@ -18,9 +19,9 @@ var (
 )
 
 type Publisher interface {
-	Subscribe(sub Subscriber) error
+	Subscribe(sub Subscriber) (string, error)
 	Publish(msg Message)
-	Unsubscribe(sub Subscriber) error
+	Unsubscribe(topicId uuid.UUID, chatId int64) error
 	GetSubscriptions(chatId int64) ([]dbmodels.Subscriptions, error)
 }
 
@@ -30,13 +31,19 @@ type Message struct {
 }
 
 type Subscriber struct {
+	ID           uuid.UUID
 	TopicPattern string
 	ChatId       int64
 	//TODO priority filter?
 }
 
 func (s *Subscriber) DbModel() *dbmodels.Subscriptions {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+
 	return &dbmodels.Subscriptions{
+		ID:           s.ID,
 		ChatID:       s.ChatId,
 		TopicPattern: s.TopicPattern,
 	}
@@ -103,30 +110,35 @@ func (n *NotificationPublisher) GetSubscriptions(chatId int64) ([]dbmodels.Subsc
 	return subs, nil
 }
 
-func (n *NotificationPublisher) Subscribe(sub Subscriber) error {
+func (n *NotificationPublisher) Subscribe(sub Subscriber) (string, error) {
 	n.sublck.Lock()
 	defer n.sublck.Unlock()
 
 	_, err := n.dbConn.NewInsert().Model(sub.DbModel()).Exec(context.TODO())
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			return ErrSubExists
+			return "", ErrSubExists
 		}
-		return fmt.Errorf("failed to insert subscription: %w", err)
+		return "", fmt.Errorf("failed to insert subscription: %w", err)
 	}
 
 	n.subscribers = append(n.subscribers, sub)
-	return nil
+	return sub.ID.String(), nil
 }
 
-func (n *NotificationPublisher) Unsubscribe(sub Subscriber) error {
+func (n *NotificationPublisher) Unsubscribe(topicId uuid.UUID, chatId int64) error {
 	n.sublck.Lock()
 	defer n.sublck.Unlock()
+
+	if topicId == uuid.Nil {
+		return fmt.Errorf("invalid subscription id")
+	}
+
 	for i, currentSub := range n.subscribers {
-		if currentSub.ChatId == sub.ChatId && currentSub.TopicPattern == sub.TopicPattern {
-			_, err := n.dbConn.NewDelete().Model(sub.DbModel()).
-				Where("chat_id = ?", sub.ChatId).
-				Where("topic_pattern = ?", sub.TopicPattern).
+		if currentSub.ID == topicId && currentSub.ChatId == chatId {
+			_, err := n.dbConn.NewDelete().Model(currentSub.DbModel()).
+				WherePK().
+				Where("chat_id = ?", chatId).
 				Exec(context.TODO())
 
 			if err != nil {

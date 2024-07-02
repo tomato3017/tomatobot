@@ -3,6 +3,7 @@ package notifications
 import (
 	"context"
 	"database/sql"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/tomato3017/tomatobot/pkg/bot/models/db"
@@ -46,7 +47,7 @@ func (t *TestNotificationSuite) Test_NotificationPublisher_Subscribe() {
 	require.NoError(t.T(), err)
 	require.Zero(t.T(), count)
 
-	err = publisher.Subscribe(Subscriber{
+	_, err = publisher.Subscribe(Subscriber{
 		TopicPattern: "test.alert",
 		ChatId:       12345,
 	})
@@ -101,7 +102,7 @@ func (t *TestNotificationSuite) Test_NotificationPublisher_Subscribe_Conflict() 
 	_, err := t.dbConn.NewInsert().Model(subscription.DbModel()).Exec(context.Background())
 	require.NoError(t.T(), err)
 
-	err = publisher.Subscribe(subscription)
+	_, err = publisher.Subscribe(subscription)
 	require.ErrorIs(t.T(), err, ErrSubExists)
 
 }
@@ -111,6 +112,7 @@ func (t *TestNotificationSuite) Test_NotificationPublisher_Unsubscribe() {
 	require.NotNil(t.T(), publisher)
 
 	checkSub := Subscriber{
+		ID:           uuid.New(),
 		TopicPattern: "test.alert",
 		ChatId:       12345,
 	}
@@ -122,10 +124,7 @@ func (t *TestNotificationSuite) Test_NotificationPublisher_Unsubscribe() {
 	require.NoError(t.T(), err)
 
 	// Now lets unsubscribe
-	err = publisher.Unsubscribe(Subscriber{
-		TopicPattern: "test.alert",
-		ChatId:       12345,
-	})
+	err = publisher.Unsubscribe(checkSub.ID, checkSub.ChatId)
 	require.NoError(t.T(), err)
 
 	require.Zero(t.T(), len(publisher.subscribers))
