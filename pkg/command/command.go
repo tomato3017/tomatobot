@@ -13,6 +13,8 @@ type TomatobotCommand interface {
 	Help() string
 }
 
+// TODO nested commands with middleware appliciation at each level
+
 type CommandParams struct {
 	CommandName string
 	Args        []string
