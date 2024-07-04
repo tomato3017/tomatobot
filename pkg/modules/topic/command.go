@@ -41,6 +41,11 @@ func newTopicCmd(publisher notifications.Publisher, tgbot *tgbotapi.BotAPI, logg
 		return nil, fmt.Errorf("unable to register subcommand")
 	}
 
+	err = topicCmd.RegisterSubcommand("unsub", newUnSubCmd(publisher, tgbot, logger))
+	if err != nil {
+		return nil, fmt.Errorf("unable to register subcommand")
+	}
+
 	err = topicCmd.RegisterSubcommand("list", newTopicListCmd(publisher, tgbot, logger))
 	if err != nil {
 		return nil, fmt.Errorf("unable to register subcommand %s. Err: %w", "list", err)

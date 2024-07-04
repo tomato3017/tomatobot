@@ -27,6 +27,7 @@ type Publisher interface {
 	Publish(msg Message)
 	Unsubscribe(topicId uuid.UUID, chatId int64) error
 	GetSubscriptions(chatId int64) ([]dbmodels.Subscriptions, error)
+	UnsubscribeAll(chatId int64) error
 }
 
 type Message struct {
@@ -111,6 +112,28 @@ func NewNotificationPublisher(tgbot *tgbotapi.BotAPI, dbConn bun.IDB, options ..
 	return &publisher
 }
 
+func (n *NotificationPublisher) UnsubscribeAll(chatId int64) error {
+	n.sublck.Lock()
+	defer n.sublck.Unlock()
+
+	//create a list of topics to remove
+	topics := make([]uuid.UUID, 0)
+	for _, subscriber := range n.subscribers {
+		if subscriber.ChatId == chatId {
+			topics = append(topics, subscriber.ID)
+		}
+	}
+
+	//unsubscribe from each topic
+	for _, topic := range topics {
+		if err := n.unsubUnSafe(topic, chatId); err != nil {
+			return fmt.Errorf("failed to unsubscribe from topic: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func (n *NotificationPublisher) updateSubsFromDb() error {
 	subs := make([]dbmodels.Subscriptions, 0)
 
@@ -163,10 +186,7 @@ func (n *NotificationPublisher) invalidateSubCache() {
 	n.subCache.DeleteAll()
 }
 
-func (n *NotificationPublisher) Unsubscribe(topicId uuid.UUID, chatId int64) error {
-	n.sublck.Lock()
-	defer n.sublck.Unlock()
-
+func (n *NotificationPublisher) unsubUnSafe(topicId uuid.UUID, chatId int64) error {
 	if topicId == uuid.Nil {
 		return fmt.Errorf("invalid subscription id")
 	}
@@ -183,12 +203,19 @@ func (n *NotificationPublisher) Unsubscribe(topicId uuid.UUID, chatId int64) err
 			}
 
 			n.subscribers = append(n.subscribers[:i], n.subscribers[i+1:]...)
-			return nil
+			break
 		}
 	}
 
 	n.invalidateSubCache()
 	return nil
+}
+
+func (n *NotificationPublisher) Unsubscribe(topicId uuid.UUID, chatId int64) error {
+	n.sublck.Lock()
+	defer n.sublck.Unlock()
+
+	return n.unsubUnSafe(topicId, chatId)
 }
 
 func (n *NotificationPublisher) Publish(msg Message) {
@@ -266,7 +293,7 @@ func (n *NotificationPublisher) handleBusMessage(ctx context.Context, msg Messag
 
 	for _, chatId := range chatIds {
 		// check if the message is a duplicate
-		dupKey := msg.DuplicationKey()
+		dupKey := fmt.Sprintf("%d-%s", chatId, msg.DuplicationKey())
 		if ok := n.dupeCache.Has(dupKey); ok {
 			logger.Trace().Msgf("Duplicate message detected: %s", msg.String())
 			continue
