@@ -29,7 +29,7 @@ func (m *MyIdMod) Initialize(ctx context.Context, params modules.InitializeParam
 
 func (m *MyIdMod) giveMyId(ctx context.Context, params command.CommandParams) error {
 	msg := params.Message
-	_, err := m.tgbot.Send(util.NewMessagePrivate(*msg, tgbotapi.ModeMarkdownV2, fmt.Sprintf("Your ID is %d and the Chat ID is %d", msg.From.ID, msg.Chat.ID)))
+	_, err := m.tgbot.Send(util.NewMessagePrivate(*msg, "", fmt.Sprintf("Your ID is %d and the Chat ID is %d", msg.From.ID, msg.Chat.ID)))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}

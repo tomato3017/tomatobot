@@ -8,6 +8,7 @@ import (
 )
 
 type HelloWorldCmd struct {
+	command.BaseCommand
 	tgbot *tgbotapi.BotAPI
 }
 
@@ -35,4 +36,11 @@ func (h *HelloWorldCmd) Description() string {
 
 func (h *HelloWorldCmd) Help() string {
 	return "Executes the hello world command"
+}
+
+func NewHelloWorldCmd(tgbot *tgbotapi.BotAPI) *HelloWorldCmd {
+	return &HelloWorldCmd{
+		BaseCommand: command.NewBaseCommand(),
+		tgbot:       tgbot,
+	}
 }

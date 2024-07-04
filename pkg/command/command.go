@@ -8,6 +8,7 @@ import (
 // TODO convert to parsing command text and providing to the command
 // TODO command filtering based on permissions
 type TomatobotCommand interface {
+	BaseICommand
 	Execute(ctx context.Context, params CommandParams) error
 	Description() string
 	Help() string

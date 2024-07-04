@@ -1,21 +1,24 @@
-package subscribe
+package topic
 
 import (
 	"context"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/rs/zerolog"
 	"github.com/tomato3017/tomatobot/pkg/command"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
 	"github.com/tomato3017/tomatobot/pkg/util"
 	"strings"
 )
 
-type SubListCmd struct {
+type TopicListCmd struct {
+	command.BaseCommand
 	publisher notifications.Publisher
 	tgbot     *tgbotapi.BotAPI
+	logger    zerolog.Logger
 }
 
-func (s *SubListCmd) Execute(ctx context.Context, params command.CommandParams) error {
+func (s *TopicListCmd) Execute(ctx context.Context, params command.CommandParams) error {
 	message := params.Message
 	currentSubs, err := s.publisher.GetSubscriptions(message.Chat.ID)
 	if err != nil {
@@ -45,10 +48,19 @@ func (s *SubListCmd) Execute(ctx context.Context, params command.CommandParams) 
 	return nil
 }
 
-func (s *SubListCmd) Description() string {
+func (s *TopicListCmd) Description() string {
 	return "List all subscriptions for the chat channel"
 }
 
-func (s *SubListCmd) Help() string {
-	return "/sublist - List all subscriptions for the chat channel"
+func (s *TopicListCmd) Help() string {
+	return "/topic list - List all subscriptions for the chat channel"
+}
+
+func newTopicListCmd(publisher notifications.Publisher, tgbot *tgbotapi.BotAPI, logger zerolog.Logger) *TopicListCmd {
+	return &TopicListCmd{
+		BaseCommand: command.NewBaseCommand(),
+		publisher:   publisher,
+		tgbot:       tgbot,
+		logger:      logger,
+	}
 }

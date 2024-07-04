@@ -1,4 +1,4 @@
-package subscribe
+package topic
 
 import (
 	"context"
@@ -9,23 +9,20 @@ import (
 	"github.com/tomato3017/tomatobot/pkg/notifications"
 	"github.com/tomato3017/tomatobot/pkg/util"
 	mfmt "github.com/tomato3017/tomatobot/pkg/util/markdownfmt"
-	"regexp"
 )
 
-var topicRegex = regexp.MustCompile(`(?m)^\w+[.\w]+[\w*]$`)
-var _ command.TomatobotCommand = &SubCreateCmd{}
+type TopicSubCmd struct {
+	command.BaseCommand
 
-type SubCreateCmd struct {
 	tgbot     *tgbotapi.BotAPI
 	publisher notifications.Publisher
 	logger    zerolog.Logger
 }
 
-func (s *SubCreateCmd) Execute(ctx context.Context, params command.CommandParams) error {
-	return s.subscribe(ctx, params.Message, params.Args[0])
-}
+func (t *TopicSubCmd) Execute(ctx context.Context, params command.CommandParams) error {
+	topic := params.Args[0]
+	msg := params.Message
 
-func (s *SubCreateCmd) subscribe(ctx context.Context, msg *tgbotapi.Message, topic string) error {
 	if topic == "" {
 		return fmt.Errorf("no topic provided")
 	}
@@ -39,12 +36,12 @@ func (s *SubCreateCmd) subscribe(ctx context.Context, msg *tgbotapi.Message, top
 		ChatId:       msg.Chat.ID,
 	}
 
-	subId, err := s.publisher.Subscribe(sub)
+	subId, err := t.publisher.Subscribe(sub)
 	if err != nil {
-		return fmt.Errorf("failed to subscribe: %w", err)
+		return fmt.Errorf("failed to topic: %w", err)
 	}
 
-	_, err = s.tgbot.Send(util.NewMessageReply(msg, tgbotapi.ModeMarkdownV2,
+	_, err = t.tgbot.Send(util.NewMessageReply(msg, tgbotapi.ModeMarkdownV2,
 		mfmt.Sprintf("Subscribed to topic %m with id %m!", topic, subId)))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
@@ -53,14 +50,19 @@ func (s *SubCreateCmd) subscribe(ctx context.Context, msg *tgbotapi.Message, top
 	return nil
 }
 
-func (s *SubCreateCmd) Description() string {
+func (t *TopicSubCmd) Description() string {
 	return "Subscribe to a topic"
 }
 
-func (s *SubCreateCmd) Help() string {
-	return "/subscribe <topic> - Subscribe to a topic"
+func (t *TopicSubCmd) Help() string {
+	return "/topic subscribe <topic> - Subscribe to a topic"
 }
 
-func (s *SubCreateCmd) unsubscribe(ctx context.Context, msg *tgbotapi.Message, topicID string) error {
-	return fmt.Errorf("not implemented")
+func newTopicSubCmd(publisher notifications.Publisher, tgbot *tgbotapi.BotAPI, logger zerolog.Logger) *TopicSubCmd {
+	return &TopicSubCmd{
+		BaseCommand: command.NewBaseCommand(),
+		publisher:   publisher,
+		tgbot:       tgbot,
+		logger:      logger,
+	}
 }

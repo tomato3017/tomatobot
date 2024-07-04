@@ -1,4 +1,4 @@
-package subscribe
+package topic
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 )
 
 type UnSubCmd struct {
+	command.BaseCommand
 	publisher notifications.Publisher
 	tgbot     *tgbotapi.BotAPI
 }
@@ -40,4 +41,12 @@ func (u *UnSubCmd) Description() string {
 
 func (u *UnSubCmd) Help() string {
 	return "/unsubscribe <topic_id> - Unsubscribe from a topic"
+}
+
+func newUnSubCmd(publisher notifications.Publisher, tgbot *tgbotapi.BotAPI) *UnSubCmd {
+	return &UnSubCmd{
+		BaseCommand: command.NewBaseCommand(),
+		publisher:   publisher,
+		tgbot:       tgbot,
+	}
 }

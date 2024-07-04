@@ -7,6 +7,7 @@ import (
 type CommandCallback func(ctx context.Context, params CommandParams) error
 
 type SimpleCommand struct {
+	BaseCommand
 	callback CommandCallback
 	desc     string
 	help     string
@@ -16,9 +17,10 @@ var _ TomatobotCommand = &SimpleCommand{}
 
 func NewSimpleCommand(callback CommandCallback, desc, help string) *SimpleCommand {
 	return &SimpleCommand{
-		callback: callback,
-		desc:     desc,
-		help:     help,
+		BaseCommand: NewBaseCommand(),
+		callback:    callback,
+		desc:        desc,
+		help:        help,
 	}
 }
 
