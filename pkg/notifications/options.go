@@ -21,9 +21,16 @@ func WithBusSize(size int) PublisherOptions {
 	}
 }
 
-func WithCacheTTL(ttl time.Duration) PublisherOptions {
+func WithSubCacheTTL(ttl time.Duration) PublisherOptions {
 	return func(p *NotificationPublisher) {
-		p.cache = ttlcache.New[string, []int64](
+		p.subCache = ttlcache.New[string, []int64](
 			ttlcache.WithTTL[string, []int64](ttl))
+	}
+}
+
+func WithDupeCacheTTL(ttl time.Duration) PublisherOptions {
+	return func(p *NotificationPublisher) {
+		p.dupeCache = ttlcache.New[string, struct{}](
+			ttlcache.WithTTL[string, struct{}](ttl))
 	}
 }

@@ -2,6 +2,8 @@ package notifications
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -28,8 +30,29 @@ type Publisher interface {
 }
 
 type Message struct {
-	Topic string
-	Msg   string
+	Topic   string
+	Msg     string
+	DupeKey string
+	DupeTTL time.Duration
+}
+
+func (m Message) String() string {
+	return fmt.Sprintf("Topic: %s, Message: %s", m.Topic, m.Msg)
+}
+
+func (m Message) DuplicationKey() string {
+	return fmt.Sprintf("%s-%s", m.Topic, m.checksum())
+}
+
+func (m Message) checksum() string {
+	chkMsg := m.Msg
+	if m.DupeKey != "" {
+		chkMsg = m.DupeKey
+	}
+
+	hasher := sha256.New()
+	hasher.Write([]byte(chkMsg))
+	return hex.EncodeToString(hasher.Sum(nil))
 }
 
 type Subscriber struct {
@@ -64,7 +87,8 @@ type NotificationPublisher struct {
 
 	sublck sync.RWMutex
 
-	cache *ttlcache.Cache[string, []int64]
+	subCache  *ttlcache.Cache[string, []int64]
+	dupeCache *ttlcache.Cache[string, struct{}]
 }
 
 var _ Publisher = &NotificationPublisher{}
@@ -76,7 +100,8 @@ func NewNotificationPublisher(tgbot *tgbotapi.BotAPI, dbConn bun.IDB, options ..
 		tgbot:       tgbot,
 		logger:      zerolog.Logger{},
 		dbConn:      dbConn,
-		cache:       ttlcache.New[string, []int64](ttlcache.WithTTL[string, []int64](5 * time.Minute)),
+		subCache:    ttlcache.New[string, []int64](ttlcache.WithTTL[string, []int64](5 * time.Minute)),
+		dupeCache:   ttlcache.New[string, struct{}](ttlcache.WithTTL[string, struct{}](5 * time.Minute)),
 	}
 
 	for _, option := range options {
@@ -135,7 +160,7 @@ func (n *NotificationPublisher) Subscribe(sub Subscriber) (string, error) {
 
 func (n *NotificationPublisher) invalidateSubCache() {
 	n.logger.Trace().Msgf("Invalidating subscription cache")
-	n.cache.DeleteAll()
+	n.subCache.DeleteAll()
 }
 
 func (n *NotificationPublisher) Unsubscribe(topicId uuid.UUID, chatId int64) error {
@@ -172,7 +197,8 @@ func (n *NotificationPublisher) Publish(msg Message) {
 
 func (n *NotificationPublisher) Close() error {
 	close(n.bus)
-	n.cache.Stop()
+	n.subCache.Stop()
+	n.dupeCache.Stop()
 
 	return nil
 }
@@ -188,13 +214,20 @@ func (n *NotificationPublisher) Stop() error {
 	return n.Close()
 }
 
+func (n *NotificationPublisher) startCaches() {
+	go func() {
+		n.subCache.Start()
+	}()
+	go func() {
+		n.dupeCache.Start()
+	}()
+}
+
 func (n *NotificationPublisher) Start(ctx context.Context) error {
 	if n.wg != nil {
 		return fmt.Errorf("already started publisher")
 	}
-	go func() {
-		n.cache.Start()
-	}()
+	n.startCaches()
 
 	n.wg = &sync.WaitGroup{}
 	n.wg.Add(1)
@@ -232,11 +265,21 @@ func (n *NotificationPublisher) handleBusMessage(ctx context.Context, msg Messag
 	}
 
 	for _, chatId := range chatIds {
+		// check if the message is a duplicate
+		dupKey := msg.DuplicationKey()
+		if ok := n.dupeCache.Has(dupKey); ok {
+			logger.Trace().Msgf("Duplicate message detected: %s", msg.String())
+			continue
+		}
+
 		// send the message to the chat
 		_, err := n.tgbot.Send(tgbotapi.NewMessage(chatId, msg.Msg))
 		if err != nil {
 			return fmt.Errorf("failed to send message: %w", err)
 		}
+
+		// cache the message to prevent duplicates
+		n.dupeCache.Set(dupKey, struct{}{}, msg.DupeTTL)
 	}
 
 	return nil
@@ -256,9 +299,9 @@ func (n *NotificationPublisher) getChatIdsForTopic(topic string) ([]int64, error
 	n.sublck.RLock()
 	defer n.sublck.RUnlock()
 
-	if ok := n.cache.Has(topic); ok {
+	if ok := n.subCache.Has(topic); ok {
 		n.logger.Trace().Msgf("Cache hit for topic: %s", topic)
-		return n.cache.Get(topic).Value(), nil
+		return n.subCache.Get(topic).Value(), nil
 	}
 	n.logger.Trace().Msgf("Cache miss for topic: %s", topic)
 
@@ -287,6 +330,6 @@ func (n *NotificationPublisher) getChatIdsForTopic(topic string) ([]int64, error
 		chatIds = append(chatIds, id)
 	}
 
-	n.cache.Set(topic, chatIds, ttlcache.DefaultTTL)
+	n.subCache.Set(topic, chatIds, ttlcache.DefaultTTL)
 	return chatIds, nil
 }

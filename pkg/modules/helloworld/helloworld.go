@@ -52,7 +52,7 @@ func (h *HelloWorldMod) Initialize(ctx context.Context, params modules.Initializ
 
 func (h *HelloWorldMod) Start(ctx context.Context) error {
 	go func() {
-		ticker := time.NewTicker(30 * time.Second)
+		ticker := time.NewTicker(10 * time.Second)
 
 		for {
 			select {
@@ -61,7 +61,7 @@ func (h *HelloWorldMod) Start(ctx context.Context) error {
 				return
 			case <-ticker.C:
 				h.logger.Trace().Msg("Publishing hello message")
-				h.publisher.Publish(notifications.Message{Topic: "helloworld.sometopic", Msg: "Hello, World!"})
+				h.publisher.Publish(notifications.Message{Topic: "helloworld.sometopic", Msg: "Hello, World!", DupeTTL: time.Minute})
 			}
 		}
 
