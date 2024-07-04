@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/tomato3017/tomatobot/pkg/bot/models"
 	"github.com/tomato3017/tomatobot/pkg/command"
+	models2 "github.com/tomato3017/tomatobot/pkg/command/models"
 	"github.com/tomato3017/tomatobot/pkg/db"
 	"github.com/tomato3017/tomatobot/pkg/modules/myid"
 	"github.com/tomato3017/tomatobot/pkg/modules/topic"
@@ -245,10 +246,11 @@ func (t *Tomatobot) handleCommandThread(ctx context.Context, msg *tgbotapi.Messa
 	}
 
 	args := strings.Split(msg.CommandArguments(), " ")
-	params := command.CommandParams{
+	params := models2.CommandParams{
 		CommandName: msgCommand,
 		Args:        args,
 		Message:     msg,
+		TgBot:       t.tgbot,
 	}
 
 	return cmdHandler.Execute(ctx, params)

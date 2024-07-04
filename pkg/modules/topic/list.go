@@ -6,6 +6,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog"
 	"github.com/tomato3017/tomatobot/pkg/command"
+	"github.com/tomato3017/tomatobot/pkg/command/models"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
 	"github.com/tomato3017/tomatobot/pkg/util"
 	"strings"
@@ -18,7 +19,7 @@ type TopicListCmd struct {
 	logger    zerolog.Logger
 }
 
-func (s *TopicListCmd) Execute(ctx context.Context, params command.CommandParams) error {
+func (s *TopicListCmd) Execute(ctx context.Context, params models.CommandParams) error {
 	message := params.Message
 	currentSubs, err := s.publisher.GetSubscriptions(message.Chat.ID)
 	if err != nil {

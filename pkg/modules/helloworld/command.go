@@ -5,6 +5,7 @@ import (
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/tomato3017/tomatobot/pkg/command"
+	"github.com/tomato3017/tomatobot/pkg/command/models"
 )
 
 type HelloWorldCmd struct {
@@ -14,7 +15,7 @@ type HelloWorldCmd struct {
 
 var _ command.TomatobotCommand = &HelloWorldCmd{}
 
-func (h *HelloWorldCmd) Execute(ctx context.Context, params command.CommandParams) error {
+func (h *HelloWorldCmd) Execute(ctx context.Context, params models.CommandParams) error {
 	msg := params.Message
 	_, err := h.tgbot.Send(tgbotapi.MessageConfig{
 		BaseChat: tgbotapi.BaseChat{

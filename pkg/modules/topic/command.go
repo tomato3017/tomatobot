@@ -5,6 +5,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog"
 	"github.com/tomato3017/tomatobot/pkg/command"
+	"github.com/tomato3017/tomatobot/pkg/command/middleware"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
 	"regexp"
 )
@@ -29,13 +30,13 @@ func (s *TopicCmd) Help() string {
 
 func newTopicCmd(publisher notifications.Publisher, tgbot *tgbotapi.BotAPI, logger zerolog.Logger) (*TopicCmd, error) {
 	topicCmd := TopicCmd{
-		BaseCommand: command.NewBaseCommand(),
+		BaseCommand: command.NewBaseCommand(middleware.WithAdminPermission()),
 		tgbot:       tgbot,
 		publisher:   publisher,
 		logger:      logger,
 	}
 
-	err := topicCmd.RegisterSubcommand("create", newTopicSubCmd(publisher, tgbot, logger))
+	err := topicCmd.RegisterSubcommand("sub", newTopicSubCmd(publisher, tgbot, logger))
 	if err != nil {
 		return nil, fmt.Errorf("unable to register subcommand")
 	}

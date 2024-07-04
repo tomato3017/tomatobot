@@ -6,12 +6,14 @@ import (
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
+	"github.com/jellydator/ttlcache/v3"
 	"github.com/rs/zerolog"
 	dbmodels "github.com/tomato3017/tomatobot/pkg/bot/models/db"
 	"github.com/uptrace/bun"
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -61,6 +63,8 @@ type NotificationPublisher struct {
 	logger zerolog.Logger
 
 	sublck sync.RWMutex
+
+	cache *ttlcache.Cache[string, []int64]
 }
 
 var _ Publisher = &NotificationPublisher{}
@@ -72,6 +76,7 @@ func NewNotificationPublisher(tgbot *tgbotapi.BotAPI, dbConn bun.IDB, options ..
 		tgbot:       tgbot,
 		logger:      zerolog.Logger{},
 		dbConn:      dbConn,
+		cache:       ttlcache.New[string, []int64](ttlcache.WithTTL[string, []int64](5 * time.Minute)),
 	}
 
 	for _, option := range options {
@@ -123,7 +128,14 @@ func (n *NotificationPublisher) Subscribe(sub Subscriber) (string, error) {
 	}
 
 	n.subscribers = append(n.subscribers, sub)
+	n.invalidateSubCache()
+
 	return sub.ID.String(), nil
+}
+
+func (n *NotificationPublisher) invalidateSubCache() {
+	n.logger.Trace().Msgf("Invalidating subscription cache")
+	n.cache.DeleteAll()
 }
 
 func (n *NotificationPublisher) Unsubscribe(topicId uuid.UUID, chatId int64) error {
@@ -149,6 +161,8 @@ func (n *NotificationPublisher) Unsubscribe(topicId uuid.UUID, chatId int64) err
 			return nil
 		}
 	}
+
+	n.invalidateSubCache()
 	return nil
 }
 
@@ -158,6 +172,7 @@ func (n *NotificationPublisher) Publish(msg Message) {
 
 func (n *NotificationPublisher) Close() error {
 	close(n.bus)
+	n.cache.Stop()
 
 	return nil
 }
@@ -177,6 +192,9 @@ func (n *NotificationPublisher) Start(ctx context.Context) error {
 	if n.wg != nil {
 		return fmt.Errorf("already started publisher")
 	}
+	go func() {
+		n.cache.Start()
+	}()
 
 	n.wg = &sync.WaitGroup{}
 	n.wg.Add(1)
@@ -238,6 +256,13 @@ func (n *NotificationPublisher) getChatIdsForTopic(topic string) ([]int64, error
 	n.sublck.RLock()
 	defer n.sublck.RUnlock()
 
+	if ok := n.cache.Has(topic); ok {
+		n.logger.Trace().Msgf("Cache hit for topic: %s", topic)
+		return n.cache.Get(topic).Value(), nil
+	}
+	n.logger.Trace().Msgf("Cache miss for topic: %s", topic)
+
+	chatIdSet := make(map[int64]struct{})
 	chatIds := make([]int64, 0)
 	for _, subscriber := range n.subscribers {
 		pattern := subscriber.TopicPattern
@@ -254,10 +279,14 @@ func (n *NotificationPublisher) getChatIdsForTopic(topic string) ([]int64, error
 
 		//check if the topic matches the regex
 		if re.MatchString(topic) {
-			chatIds = append(chatIds, subscriber.ChatId)
+			chatIdSet[subscriber.ChatId] = struct{}{}
 		}
 	}
 
-	//TODO cache the chat ids for the topic
+	for id := range chatIdSet {
+		chatIds = append(chatIds, id)
+	}
+
+	n.cache.Set(topic, chatIds, ttlcache.DefaultTTL)
 	return chatIds, nil
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/tomato3017/tomatobot/pkg/command"
+	"github.com/tomato3017/tomatobot/pkg/command/models"
 	"github.com/tomato3017/tomatobot/pkg/modules"
 	"github.com/tomato3017/tomatobot/pkg/util"
 )
@@ -27,7 +27,7 @@ func (m *MyIdMod) Initialize(ctx context.Context, params modules.InitializeParam
 	return nil
 }
 
-func (m *MyIdMod) giveMyId(ctx context.Context, params command.CommandParams) error {
+func (m *MyIdMod) giveMyId(ctx context.Context, params models.CommandParams) error {
 	msg := params.Message
 	_, err := m.tgbot.Send(util.NewMessagePrivate(*msg, "", fmt.Sprintf("Your ID is %d and the Chat ID is %d", msg.From.ID, msg.Chat.ID)))
 	if err != nil {

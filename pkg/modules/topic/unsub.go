@@ -6,6 +6,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 	"github.com/tomato3017/tomatobot/pkg/command"
+	"github.com/tomato3017/tomatobot/pkg/command/models"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
 	"github.com/tomato3017/tomatobot/pkg/util"
 )
@@ -16,7 +17,7 @@ type UnSubCmd struct {
 	tgbot     *tgbotapi.BotAPI
 }
 
-func (u *UnSubCmd) Execute(ctx context.Context, params command.CommandParams) error {
+func (u *UnSubCmd) Execute(ctx context.Context, params models.CommandParams) error {
 	topicId := params.Args[0]
 	topicUUID, err := uuid.Parse(topicId)
 	if err != nil {

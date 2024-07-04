@@ -6,6 +6,8 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog"
 	"github.com/tomato3017/tomatobot/pkg/command"
+	"github.com/tomato3017/tomatobot/pkg/command/middleware"
+	"github.com/tomato3017/tomatobot/pkg/command/models"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
 	"github.com/tomato3017/tomatobot/pkg/util"
 	mfmt "github.com/tomato3017/tomatobot/pkg/util/markdownfmt"
@@ -19,7 +21,7 @@ type TopicSubCmd struct {
 	logger    zerolog.Logger
 }
 
-func (t *TopicSubCmd) Execute(ctx context.Context, params command.CommandParams) error {
+func (t *TopicSubCmd) Execute(ctx context.Context, params models.CommandParams) error {
 	topic := params.Args[0]
 	msg := params.Message
 
@@ -59,8 +61,9 @@ func (t *TopicSubCmd) Help() string {
 }
 
 func newTopicSubCmd(publisher notifications.Publisher, tgbot *tgbotapi.BotAPI, logger zerolog.Logger) *TopicSubCmd {
+	bCmd := command.NewBaseCommand(middleware.WithNArgs(1))
 	return &TopicSubCmd{
-		BaseCommand: command.NewBaseCommand(),
+		BaseCommand: bCmd,
 		publisher:   publisher,
 		tgbot:       tgbot,
 		logger:      logger,

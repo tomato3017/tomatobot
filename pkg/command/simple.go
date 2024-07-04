@@ -2,9 +2,10 @@ package command
 
 import (
 	"context"
+	"github.com/tomato3017/tomatobot/pkg/command/models"
 )
 
-type CommandCallback func(ctx context.Context, params CommandParams) error
+type CommandCallback func(ctx context.Context, params models.CommandParams) error
 
 type SimpleCommand struct {
 	BaseCommand
@@ -24,7 +25,7 @@ func NewSimpleCommand(callback CommandCallback, desc, help string) *SimpleComman
 	}
 }
 
-func (s *SimpleCommand) Execute(ctx context.Context, params CommandParams) error {
+func (s *SimpleCommand) Execute(ctx context.Context, params models.CommandParams) error {
 	return s.callback(ctx, params)
 }
 

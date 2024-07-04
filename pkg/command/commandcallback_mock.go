@@ -4,6 +4,7 @@ package command
 
 import (
 	context "context"
+	"github.com/tomato3017/tomatobot/pkg/command/models"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -22,7 +23,7 @@ func (_m *MockCommandCallback) EXPECT() *MockCommandCallback_Expecter {
 }
 
 // Execute provides a mock function with given fields: ctx, params
-func (_m *MockCommandCallback) Execute(ctx context.Context, params CommandParams) error {
+func (_m *MockCommandCallback) Execute(ctx context.Context, params models.CommandParams) error {
 	ret := _m.Called(ctx, params)
 
 	if len(ret) == 0 {
@@ -30,7 +31,7 @@ func (_m *MockCommandCallback) Execute(ctx context.Context, params CommandParams
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, CommandParams) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, models.CommandParams) error); ok {
 		r0 = rf(ctx, params)
 	} else {
 		r0 = ret.Error(0)
@@ -51,9 +52,9 @@ func (_e *MockCommandCallback_Expecter) Execute(ctx interface{}, params interfac
 	return &MockCommandCallback_Execute_Call{Call: _e.mock.On("Execute", ctx, params)}
 }
 
-func (_c *MockCommandCallback_Execute_Call) Run(run func(ctx context.Context, params CommandParams)) *MockCommandCallback_Execute_Call {
+func (_c *MockCommandCallback_Execute_Call) Run(run func(ctx context.Context, params models.CommandParams)) *MockCommandCallback_Execute_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(CommandParams))
+		run(args[0].(context.Context), args[1].(models.CommandParams))
 	})
 	return _c
 }
@@ -63,7 +64,7 @@ func (_c *MockCommandCallback_Execute_Call) Return(_a0 error) *MockCommandCallba
 	return _c
 }
 
-func (_c *MockCommandCallback_Execute_Call) RunAndReturn(run func(context.Context, CommandParams) error) *MockCommandCallback_Execute_Call {
+func (_c *MockCommandCallback_Execute_Call) RunAndReturn(run func(context.Context, models.CommandParams) error) *MockCommandCallback_Execute_Call {
 	_c.Call.Return(run)
 	return _c
 }
