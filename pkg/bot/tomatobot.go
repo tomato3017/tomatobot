@@ -10,6 +10,7 @@ import (
 	"github.com/tomato3017/tomatobot/pkg/db"
 	"github.com/tomato3017/tomatobot/pkg/modules/myid"
 	"github.com/tomato3017/tomatobot/pkg/modules/topic"
+	"github.com/tomato3017/tomatobot/pkg/modules/weather"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
 	"github.com/tomato3017/tomatobot/pkg/sqlmigrate"
 	"github.com/tomato3017/tomatobot/pkg/util"
@@ -319,5 +320,6 @@ func getModuleRegistry() map[string]modules.BotModule {
 		"helloworld": &helloworld.HelloWorldMod{},
 		"myid":       &myid.MyIdMod{},
 		"topic":      &topic.TopicModule{},
+		"weather":    &weather.WeatherModule{},
 	}
 }

@@ -32,6 +32,26 @@ func MigrateDbSchema(ctx context.Context, db *bun.DB) (int, error) {
 		},
 	})
 
+	// Create Weather Polling table
+
+	migrations.Add(migrate.Migration{
+		Name: "create_weather_polling_table",
+		Up: func(ctx context.Context, db *bun.DB) error {
+			_, err := db.NewCreateTable().
+				Model((*dbmodels.WeatherPollingLocation)(nil)).
+				IfNotExists().
+				Exec(ctx)
+			return err
+		},
+		Down: func(ctx context.Context, db *bun.DB) error {
+			_, err := db.NewDropTable().
+				Model((*dbmodels.WeatherPollingLocation)(nil)).
+				IfExists().
+				Exec(ctx)
+			return err
+		},
+	})
+
 	ctx, cf := context.WithTimeout(ctx, 30*time.Second)
 	defer cf()
 

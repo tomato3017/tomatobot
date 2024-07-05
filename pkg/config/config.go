@@ -1,12 +1,13 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/kelseyhightower/envconfig"
 	"os"
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v3"
 )
 
@@ -30,8 +31,9 @@ type TomatoBot struct {
 	Token          string        `yaml:"token" envconfig:"TOKEN" validate:"required"`
 	CommandTimeout time.Duration `yaml:"command_timeout" envconfig:"COMMAND_TIMEOUT" default:"1m"`
 	AllModules     *bool         `yaml:"all_modules"`
-	ModulesToLoad  []string      `yaml:"modules"`
+	ModulesToLoad  []string      `yaml:"load_modules"`
 	Database       Database      `yaml:"database"`
+	Modules        ModuleConfig  `yaml:"modules"`
 }
 
 type Database struct {
@@ -40,15 +42,35 @@ type Database struct {
 	DbType           *DBType `yaml:"type" envconfig:"DATABASE_TYPE" validate:"required"` //Intentional as we need to make sure the zero value isn't the first value
 }
 
+type ModuleConfig struct {
+	Weather WeatherConfig `yaml:"weather"`
+}
+
+type WeatherConfig struct {
+	APIKey          string        `yaml:"api_key" envconfig:"WEATHER_API_KEY" validate:"required"`
+	PollingInterval time.Duration `yaml:"polling_interval" envconfig:"WEATHER_POLLING_INTERVAL" validate:"required"`
+}
+
 func (c *Config) Validate() error {
 	validate := validator.New()
 
 	return validate.Struct(c)
 }
 
+// Custom unmarshal function that errors on unknown fields
+func unmarshalStrict(data []byte, out interface{}) error {
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true) // This makes the decoder error on unknown fields
+	if err := dec.Decode(out); err != nil {
+		return err
+	}
+	return nil
+}
+
 func NewConfig(data []byte) (Config, error) {
 	cfg := Config{}
-	err := yaml.Unmarshal(data, &cfg)
+
+	err := unmarshalStrict(data, &cfg)
 
 	if err != nil {
 		return Config{}, fmt.Errorf("failed to unmarshal config: %w", err)
