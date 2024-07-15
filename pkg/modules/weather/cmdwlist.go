@@ -3,6 +3,7 @@ package weather
 import (
 	"context"
 	"fmt"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	dbmodels "github.com/tomato3017/tomatobot/pkg/bot/models/db"
 	"github.com/tomato3017/tomatobot/pkg/command"
 	"github.com/tomato3017/tomatobot/pkg/command/middleware"
@@ -46,7 +47,7 @@ func (w *weatherCmdList) Execute(ctx context.Context, params models.CommandParam
 		outStr.WriteString(fmt.Sprintf("%s \\- %s, %s\n", loc.ZipCode, loc.Name, loc.Country))
 	}
 
-	_, err = params.TgBot.Send(util.NewMessageReply(params.Message, "", outStr.String()))
+	_, err = params.TgBot.Send(util.NewMessageReply(params.Message, tgbotapi.ModeMarkdownV2, outStr.String()))
 	if err != nil {
 		return fmt.Errorf("failed to send reply: %w", err)
 	}

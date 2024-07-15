@@ -2,6 +2,8 @@ package weather
 
 import (
 	"fmt"
+	dbmodels "github.com/tomato3017/tomatobot/pkg/bot/models/db"
+	"github.com/tomato3017/tomatobot/pkg/modules/weather/owm"
 	"regexp"
 )
 
@@ -121,4 +123,9 @@ type CurrentWeatherResponse struct {
 		Description string   `json:"description"`
 		Tags        []string `json:"tags"`
 	} `json:"alerts"`
+}
+
+type tgWeatherAlert struct {
+	owm.Alerts
+	dbmodels.WeatherPollingLocations
 }

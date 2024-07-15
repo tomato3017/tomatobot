@@ -1,16 +1,24 @@
 package helloworld
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog"
+	dbmodels "github.com/tomato3017/tomatobot/pkg/bot/models/db"
 	"github.com/tomato3017/tomatobot/pkg/command/models"
 	"github.com/tomato3017/tomatobot/pkg/modules"
+	"github.com/tomato3017/tomatobot/pkg/modules/weather/owm"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
 	"github.com/tomato3017/tomatobot/pkg/util"
+	"html/template"
 	"time"
 )
+
+//go:embed msgtemplate.tmpl
+var templateStr string
 
 type HelloWorldMod struct {
 	tgbot  *tgbotapi.BotAPI
@@ -20,6 +28,11 @@ type HelloWorldMod struct {
 }
 
 var _ modules.BotModule = &HelloWorldMod{}
+
+type WeatherAlert struct {
+	owm.Alerts
+	dbmodels.WeatherPollingLocations
+}
 
 func (h *HelloWorldMod) Initialize(ctx context.Context, params modules.InitializeParameters) error {
 	h.logger = params.Logger
@@ -33,11 +46,31 @@ func (h *HelloWorldMod) Initialize(ctx context.Context, params modules.Initializ
 
 	err = params.Tomatobot.RegisterSimpleCommand("hellotest", "Says hello to the world", "Executes the hello world command",
 		func(ctx context.Context, params models.CommandParams) error {
-			_, err := h.tgbot.Send(util.NewMessageReply(params.Message, "", "Hello, World2222!"))
+			tmpl, err := template.New("hello").Parse(templateStr)
 			if err != nil {
-				return fmt.Errorf("failed to send message: %w", err)
+				return fmt.Errorf("failed to parse template: %w", err)
 			}
-			return nil
+
+			weatherData := WeatherAlert{
+				Alerts: owm.Alerts{
+					Event:       "Severe Thunderstorm Warning",
+					Start:       time.Now().Unix(),
+					End:         time.Now().Add(time.Hour).Unix(),
+					Description: "A severe thunderstorm warning has been issued for your area",
+				},
+				WeatherPollingLocations: dbmodels.WeatherPollingLocations{
+					Name: "Kalamazoo",
+				},
+			}
+
+			var tpl bytes.Buffer
+			err = tmpl.Execute(&tpl, weatherData)
+			if err != nil {
+				return fmt.Errorf("failed to execute template: %w", err)
+			}
+
+			_, err = params.TgBot.Send(util.NewMessageReply(params.Message, tgbotapi.ModeMarkdownV2, tpl.String()))
+			return err
 		})
 	if err != nil {
 		return fmt.Errorf("failed to register simple command: %w", err)

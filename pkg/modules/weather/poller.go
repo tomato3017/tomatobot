@@ -1,7 +1,9 @@
 package weather
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"github.com/rclone/debughttp"
 	"github.com/rs/zerolog"
@@ -12,10 +14,14 @@ import (
 	"github.com/uptrace/bun"
 	"strings"
 	"sync"
+	"text/template"
 	"time"
 )
 
 const WeatherPollerTopic = "weather"
+
+//go:embed weatheralert.tmpl
+var msgTemplateStr string
 
 type poller struct {
 	publisher notifications.Publisher
@@ -26,9 +32,10 @@ type poller struct {
 	wg    sync.WaitGroup
 	cfg   config.WeatherConfig
 
-	logger zerolog.Logger
-	client owm.OpenWeatherMapIClient
-	dbConn bun.IDB
+	logger      zerolog.Logger
+	client      owm.OpenWeatherMapIClient
+	dbConn      bun.IDB
+	msgTemplate *template.Template
 }
 
 func (p *poller) poll(ctx context.Context) {
@@ -124,17 +131,38 @@ func (p *poller) publishWeatherForLocation(ctx context.Context, location dbmodel
 		topicName := p.topicName(location, alert)
 		p.logger.Trace().Msgf("Topic name: %s", topicName)
 
+		renderedMsg, err := p.getRenderedWeatherAlert(alert, location)
+		if err != nil {
+			return fmt.Errorf("failed to render weather alert: %w", err)
+		}
 		p.publisher.Publish(notifications.Message{
-			Topic: topicName,
-			Msg: fmt.Sprintf("Weather Alert: Location %s, Event %s, Start %s, End %s", location.ZipCode,
-				alert.Event,
-				time.Unix(alert.Start, 0).Format(time.RFC3339),
-				time.Unix(alert.End, 0).Format(time.RFC3339)),
+			Topic:   topicName,
+			Msg:     renderedMsg,
 			DupeTTL: p.getDedupeTTL(alert),
 		})
 	}
 
 	return nil
+}
+
+func (p *poller) getRenderedWeatherAlert(alert owm.Alerts, location dbmodels.WeatherPollingLocations) (string, error) {
+	msgBuffer := bytes.Buffer{}
+	err := p.msgTemplate.Execute(&msgBuffer, tgWeatherAlert{
+		Alerts: owm.Alerts{
+			Event:       alert.Event,
+			Start:       alert.Start,
+			End:         alert.End,
+			Description: alert.Description,
+		},
+		WeatherPollingLocations: dbmodels.WeatherPollingLocations{
+			Name: location.Name,
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to render weather alert: %w", err)
+	}
+
+	return msgBuffer.String(), nil
 }
 
 type pollerNewArgs struct {
@@ -152,11 +180,25 @@ func newPoller(args pollerNewArgs) *poller {
 		args.logger.Fatal().Err(err).Msg("Failed to create OpenWeatherMap client")
 	}
 
+	tmplFuncMap := template.FuncMap{
+		"int64ToTime": int64ToTime,
+	}
+
+	msgTemplate, err := template.New("weatheralert").Funcs(tmplFuncMap).Parse(msgTemplateStr)
+	if err != nil {
+		args.logger.Fatal().Err(err).Msg("Failed to parse weather alert template")
+	}
+
 	return &poller{
-		publisher: args.publisher,
-		locations: args.locations,
-		cfg:       args.cfg,
-		logger:    args.logger,
-		client:    client,
-		dbConn:    args.dbConn}
+		publisher:   args.publisher,
+		locations:   args.locations,
+		cfg:         args.cfg,
+		logger:      args.logger,
+		client:      client,
+		dbConn:      args.dbConn,
+		msgTemplate: msgTemplate,
+	}
+}
+func int64ToTime(ts int64) time.Time {
+	return time.Unix(ts, 0)
 }
