@@ -3,7 +3,6 @@ package weather
 import (
 	"context"
 	"fmt"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog"
 	dbmodels "github.com/tomato3017/tomatobot/pkg/bot/models/db"
 	"github.com/tomato3017/tomatobot/pkg/config"
@@ -15,10 +14,9 @@ import (
 type WeatherModule struct {
 	cfg config.WeatherConfig
 
-	tgbot  *tgbotapi.BotAPI
 	dbConn bun.IDB
 
-	pollingLocations []dbmodels.WeatherPollingLocation //TODO
+	pollingLocations []dbmodels.WeatherPollingLocations //TODO
 	publisher        notifications.Publisher
 
 	weatherPoll *poller
@@ -47,7 +45,17 @@ func (w *WeatherModule) Initialize(ctx context.Context, params modules.Initializ
 
 	//Check subscriptions vs polling locations
 	// We don't want to poll for locations that no one is subscribed to
+
 	//TODO
+
+	wCmd, err := newWeatherCommand(params)
+	if err != nil {
+		return fmt.Errorf("failed to create weather command: %w", err)
+	}
+
+	if err := params.Tomatobot.RegisterCommand("weather", wCmd); err != nil {
+		return fmt.Errorf("failed to register weather command: %w", err)
+	}
 
 	return nil
 }
@@ -58,6 +66,7 @@ func (w *WeatherModule) startPolling(ctx context.Context) {
 		locations: w.pollingLocations,
 		cfg:       w.cfg,
 		logger:    w.logger.With().Str("thread", "weather_poller").Logger(),
+		dbConn:    w.dbConn,
 	})
 
 	wPoller.Start(ctx)
@@ -65,8 +74,8 @@ func (w *WeatherModule) startPolling(ctx context.Context) {
 	w.weatherPoll = wPoller
 }
 
-func (w *WeatherModule) getWeatherPollingLocations(ctx context.Context) ([]dbmodels.WeatherPollingLocation, error) {
-	var locations []dbmodels.WeatherPollingLocation
+func (w *WeatherModule) getWeatherPollingLocations(ctx context.Context) ([]dbmodels.WeatherPollingLocations, error) {
+	var locations []dbmodels.WeatherPollingLocations
 	err := w.dbConn.NewSelect().Model(&locations).Scan(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get weather polling locations: %w", err)

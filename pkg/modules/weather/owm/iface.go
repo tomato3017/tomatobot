@@ -1,5 +1,8 @@
 package owm
 
+import "context"
+
 type OpenWeatherMapIClient interface {
-	CurrentWeatherByLocation(location Location) (OneCallCurrentResponse, error)
+	CurrentWeatherByLocation(ctx context.Context, location Location) (OneCallCurrentResponse, error)
+	GetLocationDataForZipCode(ctx context.Context, zipCode string) (GeolocationResponse, error)
 }

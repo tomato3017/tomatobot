@@ -1,6 +1,7 @@
 package owm
 
 import (
+	"context"
 	"github.com/h2non/gock"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -35,7 +36,7 @@ func TestOpenWeatherMapClient_CurrentWeatherByLocation(t *testing.T) {
 	client, err := NewOpenWeatherMapClient("test")
 	require.NoError(t, err)
 
-	res, err := client.CurrentWeatherByLocation(Location{
+	res, err := client.CurrentWeatherByLocation(context.TODO(), Location{
 		Latitude:  29.8131,
 		Longitude: -95.3098,
 	})

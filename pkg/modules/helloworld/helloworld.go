@@ -39,6 +39,9 @@ func (h *HelloWorldMod) Initialize(ctx context.Context, params modules.Initializ
 			}
 			return nil
 		})
+	if err != nil {
+		return fmt.Errorf("failed to register simple command: %w", err)
+	}
 
 	err = params.Tomatobot.RegisterChatCallback("helloworld_listener", h.handleChatCallback)
 	if err != nil {

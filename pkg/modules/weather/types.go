@@ -1,5 +1,24 @@
 package weather
 
+import (
+	"fmt"
+	"regexp"
+)
+
+var usZipCodeRegex = regexp.MustCompile(`^\d{5}$`)
+
+type eventType string
+
+func (e eventType) String() string {
+	return string(e)
+}
+
+func (e eventType) fullTopicPath(zipCode string) string {
+	return fmt.Sprintf("weather.%s.%s", zipCode, e.String())
+}
+
+var weatherPublisherEventTypes = []eventType{"warning", "watch", "advisory"}
+
 type CurrentWeatherResponse struct {
 	Lat            float64 `json:"lat"`
 	Lon            float64 `json:"lon"`

@@ -1,6 +1,7 @@
 package owm
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/tomato3017/tomatobot/pkg/util"
@@ -28,7 +29,39 @@ type OpenWeatherMapClient struct {
 	url    string
 }
 
-func (c *OpenWeatherMapClient) CurrentWeatherByLocation(location Location) (OneCallCurrentResponse, error) {
+func (c *OpenWeatherMapClient) GetLocationDataForZipCode(ctx context.Context, zipCode string) (GeolocationResponse, error) {
+	rawUrl := fmt.Sprintf("http://api.openweathermap.org/geo/1.0/zip?zip=%s,us&appid=%s", zipCode, c.apiKey)
+
+	req, err := http.NewRequest(http.MethodGet, rawUrl, nil)
+	if err != nil {
+		return GeolocationResponse{}, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	res, err := c.client.Do(req)
+	if err != nil {
+		return GeolocationResponse{}, fmt.Errorf("failed to perform request: %w", err)
+	}
+	defer util.CloseSafely(res.Body)
+
+	if res.StatusCode != http.StatusOK {
+		return GeolocationResponse{}, fmt.Errorf("failed to get location data for zip code %s: %s", zipCode, res.Status)
+	}
+
+	rawBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return GeolocationResponse{}, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var response GeolocationResponse
+	err = json.Unmarshal(rawBody, &response)
+	if err != nil {
+		return GeolocationResponse{}, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return response, nil
+}
+
+func (c *OpenWeatherMapClient) CurrentWeatherByLocation(ctx context.Context, location Location) (OneCallCurrentResponse, error) {
 	finalURL, err := c.getRenderedURL_CurrentLoc(location)
 	if err != nil {
 		return OneCallCurrentResponse{}, err

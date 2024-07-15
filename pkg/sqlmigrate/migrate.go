@@ -38,14 +38,30 @@ func MigrateDbSchema(ctx context.Context, db *bun.DB) (int, error) {
 		Name: "create_weather_polling_table",
 		Up: func(ctx context.Context, db *bun.DB) error {
 			_, err := db.NewCreateTable().
-				Model((*dbmodels.WeatherPollingLocation)(nil)).
+				Model((*dbmodels.WeatherPollingLocations)(nil)).
+				IfNotExists().
+				Exec(ctx)
+			if err != nil {
+				return err
+			}
+
+			_, err = db.NewCreateTable().
+				Model((*dbmodels.WeatherPollerChats)(nil)).
 				IfNotExists().
 				Exec(ctx)
 			return err
 		},
 		Down: func(ctx context.Context, db *bun.DB) error {
 			_, err := db.NewDropTable().
-				Model((*dbmodels.WeatherPollingLocation)(nil)).
+				Model((*dbmodels.WeatherPollerChats)(nil)).
+				IfExists().
+				Exec(ctx)
+			if err != nil {
+				return err
+			}
+
+			_, err = db.NewDropTable().
+				Model((*dbmodels.WeatherPollingLocations)(nil)).
 				IfExists().
 				Exec(ctx)
 			return err

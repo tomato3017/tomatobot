@@ -46,11 +46,11 @@ func WithAdminPermission() MiddlewareFunc {
 		}
 
 		//TODO caching
-		administrators, err := params.TgBot.GetChatAdministrators(tgbotapi.ChatAdministratorsConfig{
+		administrators, err := params.TgBot.GetChatAdministrators(tgbotapi.ChatAdministratorsConfig{ //nolint:govet
 			tgbotapi.ChatConfig{ChatID: params.Message.Chat.ID},
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get chat administrators: %w", err)
 		}
 
 		for _, administrator := range administrators {

@@ -223,7 +223,7 @@ func (t *Tomatobot) handleCommand(ctx context.Context, msg *tgbotapi.Message) {
 
 		if err := t.handleCommandThread(ctx, msg); err != nil {
 			t.logger.Error().Err(err).Msg("Failed to handle command")
-			t.tgbot.Send(tgbotapi.MessageConfig{
+			_, err := t.tgbot.Send(tgbotapi.MessageConfig{
 				BaseChat: tgbotapi.BaseChat{
 					ChatID:           msg.Chat.ID,
 					ReplyToMessageID: msg.MessageID,
@@ -231,6 +231,10 @@ func (t *Tomatobot) handleCommand(ctx context.Context, msg *tgbotapi.Message) {
 				Text:                  fmt.Sprintf("Error: %s", err.Error()),
 				DisableWebPagePreview: false,
 			})
+
+			if err != nil {
+				t.logger.Error().Err(err).Msg("Failed to send error message")
+			}
 		}
 	}()
 }

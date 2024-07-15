@@ -11,8 +11,16 @@ type OneCallCurrentResponse struct {
 type Alerts struct {
 	SenderName  string   `json:"sender_name"`
 	Event       string   `json:"event"`
-	Start       int      `json:"start"`
-	End         int      `json:"end"`
+	Start       int64    `json:"start"`
+	End         int64    `json:"end"`
 	Description string   `json:"description"`
 	Tags        []string `json:"tags"`
+}
+
+type GeolocationResponse struct {
+	Zip     string  `json:"zip"`
+	Name    string  `json:"name"`
+	Lat     float64 `json:"lat"`
+	Lon     float64 `json:"lon"`
+	Country string  `json:"country"`
 }

@@ -39,6 +39,7 @@ func (u *UnSubCmd) unsubscribeTopic(ctx context.Context, params models.CommandPa
 		return fmt.Errorf("failed to parse topic id: %w", err)
 	}
 
+	u.logger.Debug().Msgf("Calling unsubscribe on topic %s", topicUUID)
 	if err := u.publisher.Unsubscribe(topicUUID, params.Message.Chat.ID); err != nil {
 		return fmt.Errorf("failed to unsubscribe: %w", err)
 	}

@@ -191,6 +191,7 @@ func (n *NotificationPublisher) unsubUnSafe(topicId uuid.UUID, chatId int64) err
 		return fmt.Errorf("invalid subscription id")
 	}
 
+	changed := false
 	for i, currentSub := range n.subscribers {
 		if currentSub.ID == topicId && currentSub.ChatId == chatId {
 			_, err := n.dbConn.NewDelete().Model(currentSub.DbModel()).
@@ -203,11 +204,15 @@ func (n *NotificationPublisher) unsubUnSafe(topicId uuid.UUID, chatId int64) err
 			}
 
 			n.subscribers = append(n.subscribers[:i], n.subscribers[i+1:]...)
+			changed = true
 			break
 		}
 	}
 
-	n.invalidateSubCache()
+	if changed {
+		n.invalidateSubCache()
+	}
+
 	return nil
 }
 
