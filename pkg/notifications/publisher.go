@@ -101,15 +101,38 @@ func NewNotificationPublisher(tgbot *tgbotapi.BotAPI, dbConn bun.IDB, options ..
 		tgbot:       tgbot,
 		logger:      zerolog.Logger{},
 		dbConn:      dbConn,
-		subCache:    ttlcache.New[string, []int64](ttlcache.WithTTL[string, []int64](5 * time.Minute)),
 		dupeCache:   ttlcache.New[string, struct{}](ttlcache.WithTTL[string, struct{}](5 * time.Minute)),
+		subCache:    ttlcache.New[string, []int64](ttlcache.WithTTL[string, []int64](5 * time.Minute)),
 	}
+	if err := publisher.populateDupeCache(); err != nil {
+		publisher.logger.Fatal().Err(err).Msg("failed to populate dupe cache")
+	}
+
+	publisher.dupeCache.OnInsertion(publisher.insertDupeCache)
 
 	for _, option := range options {
 		option(&publisher)
 	}
 
 	return &publisher
+}
+
+func (n *NotificationPublisher) insertDupeCache(ctx context.Context, item *ttlcache.Item[string, struct{}]) {
+	n.logger.Trace().Msgf("Inserting dupe cache: %s TTL: %s", item.Key(), item.ExpiresAt())
+	dbCacheMdl := &dbmodels.NotificationsDupeCache{
+		DupeKey:    item.Key(),
+		DupeTTLEnd: item.ExpiresAt(),
+	}
+
+	_, err := n.dbConn.NewInsert().
+		Model(dbCacheMdl).
+		On("CONFLICT(dupe_key) DO UPDATE").
+		Set("dupe_ttl_end = EXCLUDED.dupe_ttl_end").
+		Where("dupe_ttl_end < EXCLUDED.dupe_ttl_end").
+		Exec(ctx)
+	if err != nil {
+		n.logger.Error().Err(err).Msg("failed to insert dupe cache")
+	}
 }
 
 func (n *NotificationPublisher) UnsubscribeAll(chatId int64) error {
@@ -267,7 +290,9 @@ func (n *NotificationPublisher) Start(ctx context.Context) error {
 	ctx, cf := context.WithCancel(ctx)
 	n.cancelFunc = cf
 
+	//start the message handler
 	go func(ctx context.Context, wg *sync.WaitGroup) {
+		n.logger.Trace().Msgf("Starting message handler")
 		defer wg.Done()
 		for {
 			select {
@@ -278,6 +303,21 @@ func (n *NotificationPublisher) Start(ctx context.Context) error {
 					n.logger.Error().Err(err).Msg("failed to handle bus message")
 					continue
 				}
+			}
+		}
+	}(ctx, n.wg)
+
+	//start db cache cleanup routine
+	n.wg.Add(1)
+	go func(ctx context.Context, wg *sync.WaitGroup) {
+		defer wg.Done()
+		n.logger.Trace().Msg("Starting db cache cleanup routine")
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Minute):
+				n.cleanupDb(ctx)
 			}
 		}
 	}(ctx, n.wg)
@@ -364,4 +404,31 @@ func (n *NotificationPublisher) getChatIdsForTopic(topic string) ([]int64, error
 
 	n.subCache.Set(topic, chatIds, ttlcache.DefaultTTL)
 	return chatIds, nil
+}
+
+func (n *NotificationPublisher) populateDupeCache() error {
+	dbCache := make([]dbmodels.NotificationsDupeCache, 0)
+
+	err := n.dbConn.NewSelect().Model(&dbCache).
+		Where("dupe_ttl_end > ?", time.Now()).
+		Scan(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get dupe cache: %w", err)
+	}
+
+	for _, cache := range dbCache {
+		n.dupeCache.Set(cache.DupeKey, struct{}{}, time.Until(cache.DupeTTLEnd))
+	}
+
+	return nil
+}
+
+func (n *NotificationPublisher) cleanupDb(ctx context.Context) {
+	n.logger.Trace().Msg("Cleaning up db")
+	_, err := n.dbConn.NewDelete().Model((*dbmodels.NotificationsDupeCache)(nil)).
+		Where("dupe_ttl_end < ?", time.Now()).
+		Exec(ctx)
+	if err != nil {
+		n.logger.Error().Err(err).Msg("failed to clean up dupe cache")
+	}
 }

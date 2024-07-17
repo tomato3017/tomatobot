@@ -3,6 +3,7 @@ package db
 import (
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
+	"time"
 )
 
 type Subscriptions struct {
@@ -37,4 +38,13 @@ type WeatherPollerChats struct {
 	ChatID                 int64                    `bun:"chat_id,notnull,unique:weather_poller_chats_chat_id_key"`
 	PollerLocationID       int                      `bun:"poller_location_id,notnull,unique:weather_poller_chats_chat_id_key"`
 	WeatherPollingLocation *WeatherPollingLocations `bun:"rel:belongs-to,join:poller_location_id=id"`
+}
+
+type NotificationsDupeCache struct {
+	bun.BaseModel `bun:"notifications_dupe_cache"`
+
+	ID         int       `bun:"id,pk,autoincrement"`
+	CreatedAt  time.Time `bun:"created_at,notnull,default:current_timestamp"`
+	DupeKey    string    `bun:"dupe_key,notnull,unique"`
+	DupeTTLEnd time.Time `bun:"dupe_ttl_end,notnull"`
 }

@@ -68,6 +68,24 @@ func MigrateDbSchema(ctx context.Context, db *bun.DB) (int, error) {
 		},
 	})
 
+	migrations.Add(migrate.Migration{
+		Name: "create_dedupe_table",
+		Up: func(ctx context.Context, db *bun.DB) error {
+			_, err := db.NewCreateTable().
+				Model((*dbmodels.NotificationsDupeCache)(nil)).
+				IfNotExists().
+				Exec(ctx)
+			return err
+		},
+		Down: func(ctx context.Context, db *bun.DB) error {
+			_, err := db.NewDropTable().
+				Model((*dbmodels.NotificationsDupeCache)(nil)).
+				IfExists().
+				Exec(ctx)
+			return err
+		},
+	})
+
 	ctx, cf := context.WithTimeout(ctx, 30*time.Second)
 	defer cf()
 
