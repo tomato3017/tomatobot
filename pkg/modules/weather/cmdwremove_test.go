@@ -28,7 +28,7 @@ func (t *TestWCmdRemoveSuite) SetupTest() {
 	require.NoError(t.T(), err)
 
 	bunDb := bun.NewDB(sqlDb, sqlitedialect.New())
-	bunDb.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true), bundebug.WithEnabled(true)))
+	bunDb.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true), bundebug.WithEnabled(false)))
 	_, err = bunDb.Exec("PRAGMA foreign_keys = ON")
 	require.NoError(t.T(), err)
 

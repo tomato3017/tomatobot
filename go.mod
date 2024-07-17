@@ -10,7 +10,6 @@ require (
 	github.com/jellydator/ttlcache/v3 v3.2.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/oklog/run v1.1.0
-	github.com/rclone/debughttp v0.0.0-20221231123907-89360340d91c
 	github.com/rs/zerolog v1.33.0
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0

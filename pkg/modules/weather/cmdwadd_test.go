@@ -27,7 +27,7 @@ func (t *TestWCmdAddSuite) SetupTest() {
 	require.NoError(t.T(), err)
 
 	bunDb := bun.NewDB(sqlDb, sqlitedialect.New())
-	bunDb.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true), bundebug.WithEnabled(true)))
+	bunDb.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true), bundebug.WithEnabled(false)))
 	_, err = bunDb.Exec("PRAGMA foreign_keys = ON")
 	require.NoError(t.T(), err)
 
@@ -75,7 +75,7 @@ func (t *TestWCmdAddSuite) Test_WCmdAdd_checkZipInDb() {
 		err = w.dbConn.RunInTx(context.Background(), nil, func(ctx context.Context, tx bun.Tx) error {
 			geoLoc, err := w.checkZipInDb(ctx, tx, "90210")
 			require.NoError(t.T(), err)
-			require.Equal(t.T(), dbmodels.WeatherPollingLocations{}, geoLoc)
+			require.Equal(t.T(), checkLocation, geoLoc)
 			return nil
 		})
 	})
@@ -112,7 +112,7 @@ func (t *TestWCmdAddSuite) Test_WCmdAdd_addLocationToSubscriptions() {
 
 func (t *TestWCmdAddSuite) Test_WCmdAdd_addWeatherLocation() {
 	mockOwm := owm.NewMockOpenWeatherMapIClient(t.T())
-	mockOwm.EXPECT().GetLocationDataForZipCode("90210").Return(owm.GeolocationResponse{
+	mockOwm.EXPECT().GetLocationDataForZipCode(context.Background(), "90210").Return(owm.GeolocationResponse{
 		Zip:     "90210",
 		Name:    "Beverly Hills",
 		Lat:     1,

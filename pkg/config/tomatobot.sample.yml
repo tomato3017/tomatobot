@@ -1,6 +1,11 @@
 tomatobot:
+  loglevel: "trace"
   token: "testtoken"
-  redis: "localhost:6379"
-  postgres: "postgresql://user:secret@localhost"
-  command_timeout: "5m"
-  debug: "true"
+  database:
+    type: "sqlite"
+    log_queries: true
+    connection_string: "file::memory:?cache=shared" #TODO change to file path
+  modules:
+    weather:
+      api_key: "testkey"
+      polling_interval: 60s

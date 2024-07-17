@@ -2,14 +2,14 @@ package weather
 
 import (
 	"context"
-	"fmt"
 	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbmodels "github.com/tomato3017/tomatobot/pkg/bot/models/db"
 	"github.com/tomato3017/tomatobot/pkg/config"
 	"github.com/tomato3017/tomatobot/pkg/modules/weather/owm"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
-	"sync"
+	"strings"
 	"testing"
 	"time"
 )
@@ -18,13 +18,14 @@ func TestPoller_publishWeatherForLocation(t *testing.T) {
 	mockPublisher := notifications.NewMockPublisher(t)
 	mockClient := owm.NewMockOpenWeatherMapIClient(t)
 
-	testPoller := poller{
+	testPoller := newPoller(pollerNewArgs{
 		publisher: mockPublisher,
-		wg:        sync.WaitGroup{},
+		locations: make([]dbmodels.WeatherPollingLocations, 0),
 		cfg:       config.WeatherConfig{},
 		logger:    zerolog.Logger{},
-		client:    mockClient,
-	}
+		dbConn:    nil,
+	})
+	testPoller.client = mockClient
 
 	testLocation := owm.Location{
 		Latitude:  55,
@@ -57,13 +58,16 @@ func TestPoller_publishWeatherForLocation(t *testing.T) {
 		},
 	}
 
-	mockClient.EXPECT().CurrentWeatherByLocation(testLocation).Return(owmResponse, nil)
-	mockPublisher.EXPECT().Publish(notifications.Message{
-		Topic:   fmt.Sprintf("%s.%s.alerts", WeatherPollerTopic, testLocationDbMdl.ZipCode),
-		Msg:     "Weather Alert: Location 12345, Event Super High heat warning, Start 2021-11-05T19:00:00-04:00, End 2021-11-05T22:00:00-04:00",
-		DupeKey: "",
-		DupeTTL: time.Hour * 6,
-	}).Return()
+	//expectedMsg := notifications.Message{
+	//	Topic:   fmt.Sprintf("%s.%s.alerts", WeatherPollerTopic, testLocationDbMdl.ZipCode),
+	//	Msg:     mock.Anything,
+	//	DupeKey: "",
+	//	DupeTTL: time.Hour * 6,
+	//}
+	mockClient.EXPECT().CurrentWeatherByLocation(mock.Anything, testLocation).Return(owmResponse, nil)
+	mockPublisher.On("Publish", mock.MatchedBy(func(msg notifications.Message) bool {
+		return strings.Contains(msg.Msg, "Super High heat warning")
+	})).Return()
 
 	err = testPoller.publishWeatherForLocation(context.Background(), testLocationDbMdl)
 

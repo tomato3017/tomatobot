@@ -11,3 +11,9 @@ build: dep generate
 
 image:
 	docker build . -q --tag tomatobot:latest
+
+lint:
+	docker run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint:v1.59.1 golangci-lint run -v
+
+test:
+	go test -race -v ./...

@@ -2,6 +2,7 @@ package config
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -14,9 +15,20 @@ func TestConfig_Validate(t *testing.T) {
 	}
 	require.Error(t, badCfg.Validate())
 
+	dbType := DBTypeSQLite
 	goodCfg := Config{
 		TomatoBot: TomatoBot{
-			Token: "123345",
+			LogLevel: "DEBUG",
+			Debug:    true,
+			Token:    "123345",
+			Database: Database{
+				ConnectionString: "sqlite://:memory:",
+				DbType:           &dbType,
+			},
+			Modules: ModuleConfig{Weather: WeatherConfig{
+				APIKey:          "12345",
+				PollingInterval: time.Second,
+			}},
 		},
 	}
 	require.NoError(t, goodCfg.Validate())

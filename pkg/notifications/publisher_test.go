@@ -26,7 +26,7 @@ func (t *TestNotificationSuite) SetupTest() {
 	require.NoError(t.T(), err)
 
 	bunDb := bun.NewDB(sqlDb, sqlitedialect.New())
-	bunDb.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true), bundebug.WithEnabled(true)))
+	bunDb.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true), bundebug.WithEnabled(false)))
 	t.dbConn = bunDb
 
 	_, err = sqlmigrate.MigrateDbSchema(context.Background(), t.dbConn)
@@ -67,10 +67,12 @@ func (t *TestNotificationSuite) Test_NotificationPublisher_updateSubsFromDb() {
 
 	subscriptions := []db.Subscriptions{
 		{
+			ID:           uuid.New(),
 			ChatID:       12345,
 			TopicPattern: "test.alert",
 		},
 		{
+			ID:           uuid.New(),
 			ChatID:       54321,
 			TopicPattern: "test.alert.*",
 		},

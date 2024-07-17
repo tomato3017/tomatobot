@@ -5,7 +5,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/rclone/debughttp"
 	"github.com/rs/zerolog"
 	dbmodels "github.com/tomato3017/tomatobot/pkg/bot/models/db"
 	"github.com/tomato3017/tomatobot/pkg/config"
@@ -174,8 +173,7 @@ type pollerNewArgs struct {
 }
 
 func newPoller(args pollerNewArgs) *poller {
-	httpClient := debughttp.NewClient(nil) //TODO remove
-	client, err := owm.NewOpenWeatherMapClient(args.cfg.APIKey, owm.WithHTTPClient(httpClient))
+	client, err := owm.NewOpenWeatherMapClient(args.cfg.APIKey)
 	if err != nil {
 		args.logger.Fatal().Err(err).Msg("Failed to create OpenWeatherMap client")
 	}

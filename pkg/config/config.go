@@ -48,7 +48,7 @@ type ModuleConfig struct {
 
 type WeatherConfig struct {
 	APIKey          string        `yaml:"api_key" envconfig:"WEATHER_API_KEY" validate:"required"`
-	PollingInterval time.Duration `yaml:"polling_interval" envconfig:"WEATHER_POLLING_INTERVAL" validate:"required"`
+	PollingInterval time.Duration `yaml:"polling_interval" envconfig:"WEATHER_POLLING_INTERVAL" default:"5m"`
 }
 
 func (c *Config) Validate() error {
@@ -90,6 +90,8 @@ func NewConfig(data []byte) (Config, error) {
 
 func NewConfigFromFile(path string) (Config, error) {
 	data, err := os.ReadFile(path)
+	cwd, _ := os.Getwd()
+	var _ = cwd
 	if err != nil {
 		return Config{}, fmt.Errorf("failed to read config file: %w", err)
 	}
