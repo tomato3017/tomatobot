@@ -22,7 +22,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/tomato3017/tomatobot/pkg/config"
 	"github.com/tomato3017/tomatobot/pkg/modules"
-	"github.com/tomato3017/tomatobot/pkg/modules/helloworld"
 )
 
 type Tomatobot struct {
@@ -321,9 +320,8 @@ func NewTomatobot(cfg config.Config, logger zerolog.Logger) *Tomatobot {
 
 func getModuleRegistry() map[string]modules.BotModule {
 	return map[string]modules.BotModule{
-		"helloworld": &helloworld.HelloWorldMod{},
-		"myid":       &myid.MyIdMod{},
-		"topic":      &topic.TopicModule{},
-		"weather":    &weather.WeatherModule{},
+		"myid":    &myid.MyIdMod{},
+		"topic":   &topic.TopicModule{},
+		"weather": &weather.WeatherModule{},
 	}
 }
