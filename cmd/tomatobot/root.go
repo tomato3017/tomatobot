@@ -33,7 +33,6 @@ var COMMIT = func() string {
 	return ""
 }()
 
-//go:generate sh -c "printf %s $(git describe --tags) > VERSION.txt"
 //go:embed VERSION.txt
 var embedVERSION string
 

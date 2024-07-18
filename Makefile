@@ -3,6 +3,7 @@ dep:
 	go mod tidy
 
 generate:
+	go generate version_gen.go
 	go generate ./...
 
 build: dep generate
@@ -10,7 +11,7 @@ build: dep generate
 	CGO_ENABLED=0 GOOS=linux go build -o ./bin/ .
 
 image:
-	docker build . -q --tag tomatobot:latest
+	docker build . --tag tomatobot:latest
 
 lint:
 	docker run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint:v1.59.1 golangci-lint run -v
