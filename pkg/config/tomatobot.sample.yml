@@ -1,0 +1,11 @@
+tomatobot:
+  loglevel: "trace"
+  token: "testtoken"
+  database:
+    type: "sqlite"
+    log_queries: true
+    connection_string: "file::memory:?cache=shared" #TODO change to file path
+  modules:
+    weather:
+      api_key: "testkey"
+      polling_interval: 60s

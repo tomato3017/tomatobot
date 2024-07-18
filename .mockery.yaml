@@ -1,0 +1,9 @@
+with-expecter: true
+inpackage: true
+dir: "{{.InterfaceDir}}"
+filename: "{{ .InterfaceName | lower }}_mock.go"
+packages:
+  github.com/tomato3017/tomatobot:
+    config:
+      all: true
+      recursive: true

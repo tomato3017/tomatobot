@@ -1,0 +1,46 @@
+package config
+
+import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestConfig_Validate(t *testing.T) {
+	badCfg := Config{
+		TomatoBot: TomatoBot{
+			Token: "",
+		},
+	}
+	require.Error(t, badCfg.Validate())
+
+	dbType := DBTypeSQLite
+	goodCfg := Config{
+		TomatoBot: TomatoBot{
+			LogLevel: "DEBUG",
+			Debug:    true,
+			Token:    "123345",
+			Database: Database{
+				ConnectionString: "sqlite://:memory:",
+				DbType:           &dbType,
+			},
+			Modules: ModuleConfig{Weather: WeatherConfig{
+				APIKey:          "12345",
+				PollingInterval: time.Second,
+			}},
+		},
+	}
+	require.NoError(t, goodCfg.Validate())
+}
+
+func TestNewConfigFromFile(t *testing.T) {
+	path := "tomatobot.sample.yml"
+	cfg, err := NewConfigFromFile(path)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	// Assert the values from the loaded config file
+	expectedToken := "testtoken"
+	require.Equal(t, expectedToken, cfg.TomatoBot.Token)
+}
