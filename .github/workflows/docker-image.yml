@@ -22,9 +22,9 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/${{ github.repository }}:latest
-            ${{ secrets.DOCKER_USERNAME }}/${{ github.repository }}:${{ github.sha }}
-            ${{ secrets.DOCKER_USERNAME }}/${{ github.repository }}:${{ github.ref_name }}
+            ${{ github.repository }}:latest
+            ${{ github.repository }}:${{ github.sha }}
+            ${{ github.repository }}:${{ github.ref_name }}
           platforms: linux/amd64
 
       - name: Docker login
