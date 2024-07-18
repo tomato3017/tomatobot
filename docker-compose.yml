@@ -2,7 +2,7 @@ services:
   app:
     build: .
     env_file:
-      - ./.env
+      - ./tomatobot.env
     volumes:
       - ./tomatobot.yml:/app/tomatobot.yml
       - tomatobot_data:/app/data

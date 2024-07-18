@@ -10,7 +10,7 @@ import (
 func TestConfig_Validate(t *testing.T) {
 	badCfg := Config{
 		TomatoBot: TomatoBot{
-			Token: "",
+			TelegramToken: "",
 		},
 	}
 	require.Error(t, badCfg.Validate())
@@ -18,9 +18,9 @@ func TestConfig_Validate(t *testing.T) {
 	dbType := DBTypeSQLite
 	goodCfg := Config{
 		TomatoBot: TomatoBot{
-			LogLevel: "DEBUG",
-			Debug:    true,
-			Token:    "123345",
+			LogLevel:      "DEBUG",
+			Debug:         true,
+			TelegramToken: "123345",
 			Database: Database{
 				ConnectionString: "sqlite://:memory:",
 				DbType:           &dbType,
@@ -42,5 +42,5 @@ func TestNewConfigFromFile(t *testing.T) {
 
 	// Assert the values from the loaded config file
 	expectedToken := "testtoken"
-	require.Equal(t, expectedToken, cfg.TomatoBot.Token)
+	require.Equal(t, expectedToken, cfg.TomatoBot.TelegramToken)
 }

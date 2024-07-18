@@ -28,7 +28,7 @@ const (
 type TomatoBot struct {
 	LogLevel       LogLevel      `yaml:"loglevel" envconfig:"LOGLEVEL"`
 	Debug          bool          `yaml:"debug" envconfig:"DEBUG"`
-	Token          string        `yaml:"token" envconfig:"TOKEN" validate:"required"`
+	TelegramToken  string        `yaml:"telegramToken" envconfig:"TELEGRAM_TOKEN" validate:"required"`
 	DataDir        string        `yaml:"data_dir" envconfig:"DATA_DIR" default:"data"`
 	CommandTimeout time.Duration `yaml:"command_timeout" envconfig:"COMMAND_TIMEOUT" default:"1m"`
 	AllModules     *bool         `yaml:"all_modules"`
@@ -78,7 +78,7 @@ func NewConfig(data []byte) (Config, error) {
 	}
 
 	//Check the environment variables
-	if err := envconfig.Process("TOMATOBOT", &cfg); err != nil {
+	if err := envconfig.Process("", &cfg); err != nil {
 		return Config{}, fmt.Errorf("failed to process env variables: %w", err)
 	}
 

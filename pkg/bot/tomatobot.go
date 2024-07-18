@@ -74,7 +74,7 @@ func (t *Tomatobot) Run(ctx context.Context) error {
 
 	t.logger.Debug().Msg("Database connection successful")
 
-	tgbot, err := tgbotapi.NewBotAPI(t.cfg.TomatoBot.Token)
+	tgbot, err := tgbotapi.NewBotAPI(t.cfg.TomatoBot.TelegramToken)
 	if err != nil {
 		return fmt.Errorf("failed to create telegram bot: %w", err)
 	}
