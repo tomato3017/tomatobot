@@ -1,0 +1,12 @@
+tomatobot:
+  loglevel: "trace"
+  debug: false
+  token: "testtoken"
+  database:
+    type: "sqlite"
+    log_queries: false
+    connection_string: "file:db.sqlite?cache=shared"
+  modules:
+    weather:
+      api_key: "testkey"
+      polling_interval: 60s

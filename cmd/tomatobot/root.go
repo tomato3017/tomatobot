@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/tomato3017/tomatobot/pkg/bot"
 	"github.com/tomato3017/tomatobot/pkg/config"
+	"log"
 	"os"
 	"os/signal"
 	"runtime/debug"
@@ -81,6 +82,10 @@ func executeBot(args []string) error {
 	logger = deriveLoggerFromLevel(logger, cfg.TomatoBot.LogLevel)
 	logger.Debug().Any("config", cfg).Msg("Loaded configuration")
 
+	if err := createDataDir(cfg); err != nil {
+		return fmt.Errorf("failed to create data directory: %w", err)
+	}
+
 	tomatoBot := bot.NewTomatobot(cfg, logger)
 
 	runGrp := run.Group{}
@@ -100,6 +105,25 @@ func executeBot(args []string) error {
 
 	return nil
 
+}
+
+func createDataDir(cfg config.Config) error {
+	// Check if the directory exists
+	if _, err := os.Stat(cfg.DataDir); os.IsNotExist(err) {
+		// Directory does not exist, create it
+		err := os.MkdirAll(cfg.DataDir, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("failed to create data directory: %w", err)
+		}
+	}
+
+	// Set the current working directory to the specified directory
+	err := os.Chdir(cfg.DataDir)
+	if err != nil {
+		log.Fatalf("Failed to set current working directory: %s", err)
+	}
+
+	return nil
 }
 
 func deriveLoggerFromLevel(logger zerolog.Logger, level config.LogLevel) zerolog.Logger {
