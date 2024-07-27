@@ -47,7 +47,7 @@ func (w *weatherCmdRemove) Execute(ctx context.Context, params models.CommandPar
 		return fmt.Errorf("failed to remove subscriptions: %w", err)
 	}
 
-	_, err = params.TgBot.Send(util.NewMessageReply(params.Message, "", "Location removed successfully"))
+	_, err = params.BotProxy.Send(util.NewMessageReply(params.Message, "", "Location removed successfully"))
 	if err != nil {
 		return fmt.Errorf("failed to send reply: %w", err)
 	}

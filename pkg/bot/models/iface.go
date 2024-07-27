@@ -11,8 +11,3 @@ type TomatobotInstance interface {
 	RegisterSimpleCommand(name, desc, help string, callback command.CommandCallback) error
 	RegisterChatCallback(name string, handler func(ctx context.Context, msg tgbotapi.Message)) error
 }
-
-// TODO add wrapper to tgbot to allow for easier testing and to allow interception of calls
-//type TGBotCapable interface {
-//	tgbotapi.BotAPI
-//}

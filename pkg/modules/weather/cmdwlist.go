@@ -34,7 +34,7 @@ func (w *weatherCmdList) Execute(ctx context.Context, params models.CommandParam
 	}
 
 	if len(dbLocations) == 0 {
-		_, err = params.TgBot.Send(util.NewMessageReply(params.Message, "", "No locations found"))
+		_, err = params.BotProxy.Send(util.NewMessageReply(params.Message, "", "No locations found"))
 		if err != nil {
 			return fmt.Errorf("failed to send reply: %w", err)
 		}
@@ -47,7 +47,7 @@ func (w *weatherCmdList) Execute(ctx context.Context, params models.CommandParam
 		outStr.WriteString(fmt.Sprintf("%s \\- %s, %s\n", loc.ZipCode, loc.Name, loc.Country))
 	}
 
-	_, err = params.TgBot.Send(util.NewMessageReply(params.Message, tgbotapi.ModeMarkdownV2, outStr.String()))
+	_, err = params.BotProxy.Send(util.NewMessageReply(params.Message, tgbotapi.ModeMarkdownV2, outStr.String()))
 	if err != nil {
 		return fmt.Errorf("failed to send reply: %w", err)
 	}

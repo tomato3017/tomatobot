@@ -50,7 +50,7 @@ func (w *weatherCmdAdd) Execute(ctx context.Context, params models.CommandParams
 		return fmt.Errorf("failed to add weather location: %w", err)
 	}
 
-	_, err = params.TgBot.Send(util.NewMessageReply(params.Message, "", "Location added successfully"))
+	_, err = params.BotProxy.Send(util.NewMessageReply(params.Message, "", "Location added successfully"))
 	if err != nil {
 		return fmt.Errorf("failed to send reply: %w", err)
 	}

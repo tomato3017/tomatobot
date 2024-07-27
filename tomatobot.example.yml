@@ -1,6 +1,7 @@
 tomatobot:
   loglevel: "trace"
   debug: false
+  send_proxied_response_to_chat: true
   database:
     type: "sqlite"
     log_queries: false

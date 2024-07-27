@@ -26,15 +26,16 @@ const (
 )
 
 type TomatoBot struct {
-	LogLevel       LogLevel      `yaml:"loglevel" envconfig:"LOGLEVEL"`
-	Debug          bool          `yaml:"debug" envconfig:"DEBUG"`
-	TelegramToken  string        `yaml:"telegramToken" envconfig:"TELEGRAM_TOKEN" validate:"required"`
-	DataDir        string        `yaml:"data_dir" envconfig:"DATA_DIR" default:"data"`
-	CommandTimeout time.Duration `yaml:"command_timeout" envconfig:"COMMAND_TIMEOUT" default:"1m"`
-	AllModules     *bool         `yaml:"all_modules"`
-	ModulesToLoad  []string      `yaml:"load_modules"`
-	Database       Database      `yaml:"database"`
-	Modules        ModuleConfig  `yaml:"modules"`
+	LogLevel                      LogLevel      `yaml:"loglevel" envconfig:"LOGLEVEL"`
+	Debug                         bool          `yaml:"debug" envconfig:"DEBUG"`
+	TelegramToken                 string        `yaml:"telegramToken" envconfig:"TELEGRAM_TOKEN" validate:"required"`
+	DataDir                       string        `yaml:"data_dir" envconfig:"DATA_DIR" default:"data"`
+	CommandTimeout                time.Duration `yaml:"command_timeout" envconfig:"COMMAND_TIMEOUT" default:"1m"`
+	SendProxiedResponsesToChannel bool          `yaml:"send_proxied_response_to_chat"`
+	AllModules                    *bool         `yaml:"all_modules"`
+	ModulesToLoad                 []string      `yaml:"load_modules"`
+	Database                      Database      `yaml:"database"`
+	Modules                       ModuleConfig  `yaml:"modules"`
 }
 
 type Database struct {

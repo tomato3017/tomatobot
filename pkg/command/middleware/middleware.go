@@ -46,7 +46,7 @@ func WithAdminPermission() MiddlewareFunc {
 		}
 
 		//TODO caching
-		administrators, err := params.TgBot.GetChatAdministrators(tgbotapi.ChatAdministratorsConfig{ //nolint:govet
+		administrators, err := params.BotProxy.InnerBotAPI().GetChatAdministrators(tgbotapi.ChatAdministratorsConfig{ //nolint:govet
 			tgbotapi.ChatConfig{ChatID: params.Message.Chat.ID},
 		})
 		if err != nil {

@@ -6,7 +6,8 @@ generate:
 	go generate version_gen.go
 	go generate ./...
 
-build: dep generate
+build: dep
+	go generate version_gen.go
 	mkdir -p bin
 	CGO_ENABLED=0 GOOS=linux go build -o ./bin/ .
 

@@ -68,7 +68,7 @@ func (b *BaseCommand) Execute(ctx context.Context, params models.CommandParams) 
 		CommandName: params.CommandName,
 		Args:        params.Args[1:],
 		Message:     params.Message,
-		TgBot:       params.TgBot,
+		BotProxy:    params.BotProxy,
 	}
 
 	bCmd, ok := cmd.(BaseICommand)
@@ -88,7 +88,7 @@ func (b *BaseCommand) printHelp(ctx context.Context, params models.CommandParams
 		helpMsg += fmt.Sprintf("\\- * %s * \\- %s\n", name, cmd.Description())
 	}
 
-	_, err := params.TgBot.Send(util.NewMessageReply(params.Message, tgbotapi.ModeMarkdownV2, helpMsg))
+	_, err := params.BotProxy.Send(util.NewMessageReply(params.Message, tgbotapi.ModeMarkdownV2, helpMsg))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}

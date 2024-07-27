@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/tomato3017/tomatobot/pkg/bot/models"
+	"github.com/tomato3017/tomatobot/pkg/bot/proxy"
 	"github.com/tomato3017/tomatobot/pkg/command"
-	models2 "github.com/tomato3017/tomatobot/pkg/command/models"
+	cmdmdls "github.com/tomato3017/tomatobot/pkg/command/models"
 	"github.com/tomato3017/tomatobot/pkg/db"
 	"github.com/tomato3017/tomatobot/pkg/modules/myid"
 	"github.com/tomato3017/tomatobot/pkg/modules/topic"
@@ -35,6 +36,7 @@ type Tomatobot struct {
 	chatCallbacks   map[string]func(ctx context.Context, msg tgbotapi.Message)
 
 	notiPublisher *notifications.NotificationPublisher
+	botProxy      proxy.TGBotImplementation
 
 	dbConn *bun.DB
 }
@@ -86,6 +88,14 @@ func (t *Tomatobot) Run(ctx context.Context) error {
 	// Initialize the notification publisher
 	t.notiPublisher = notifications.NewNotificationPublisher(tgbot, t.dbConn,
 		notifications.WithLogger(t.logger.With().Str("module", "notifications").Logger()))
+
+	botProxy, err := proxy.NewTGBotProxy(tgbot,
+		proxy.WithLogger(t.logger.With().Str("module", "proxy").Logger()),
+		proxy.WithSendToChatChannels(t.cfg.TomatoBot.SendProxiedResponsesToChannel))
+	if err != nil {
+		return fmt.Errorf("failed to create bot proxy: %w", err)
+	}
+	t.botProxy = botProxy
 
 	// Initialize modules
 	err = t.initializeModules(ctx, tgbot)
@@ -222,7 +232,7 @@ func (t *Tomatobot) handleCommand(ctx context.Context, msg *tgbotapi.Message) {
 
 		if err := t.handleCommandThread(ctx, msg); err != nil {
 			t.logger.Error().Err(err).Msg("Failed to handle command")
-			_, err := t.tgbot.Send(tgbotapi.MessageConfig{
+			_, err := t.botProxy.Send(tgbotapi.MessageConfig{
 				BaseChat: tgbotapi.BaseChat{
 					ChatID:           msg.Chat.ID,
 					ReplyToMessageID: msg.MessageID,
@@ -250,11 +260,11 @@ func (t *Tomatobot) handleCommandThread(ctx context.Context, msg *tgbotapi.Messa
 	}
 
 	args := strings.Split(msg.CommandArguments(), " ")
-	params := models2.CommandParams{
+	params := cmdmdls.CommandParams{
 		CommandName: msgCommand,
 		Args:        args,
 		Message:     msg,
-		TgBot:       t.tgbot,
+		BotProxy:    t.botProxy,
 	}
 
 	return cmdHandler.Execute(ctx, params)
