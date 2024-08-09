@@ -12,6 +12,7 @@ import (
 	"github.com/tomato3017/tomatobot/pkg/bot"
 	"github.com/tomato3017/tomatobot/pkg/config"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"runtime/debug"
@@ -97,6 +98,20 @@ func executeBot(args []string) error {
 		ctxCf()
 	})
 
+	if cfg.Heartbeat.Enabled {
+		logger.Debug().Msg("Heartbeat enabled")
+		if cfg.Heartbeat.URL == "" {
+			logger.Fatal().Msg("Heartbeat URL not set")
+		}
+		// Run the heartbeat
+		runGrp.Add(func() error {
+			runHeartbeat(ctx, logger, cfg)
+			return nil
+		}, func(err error) {
+			ctxCf()
+		})
+	}
+
 	if err := runGrp.Run(); err != nil {
 		logger.Error().Err(err).Msg("error running bot")
 		os.Exit(1)
@@ -104,6 +119,44 @@ func executeBot(args []string) error {
 
 	return nil
 
+}
+
+func runHeartbeat(ctx context.Context, logger zerolog.Logger, cfg config.Config) {
+	ticker := time.NewTicker(cfg.Heartbeat.Interval)
+	defer ticker.Stop()
+
+	for {
+		if err := heartbeat(ctx, logger, cfg.Heartbeat.URL); err != nil {
+			logger.Error().Err(err).Msg("Failed to send heartbeat")
+		}
+
+		select {
+		case <-ctx.Done():
+			logger.Debug().Msg("Heartbeat stopped")
+			return
+		case <-ticker.C:
+		}
+	}
+}
+
+func heartbeat(ctx context.Context, logger zerolog.Logger, url string) error {
+	logger.Trace().Msg("Sending heartbeat")
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	return nil
 }
 
 func createDataDir(cfg config.Config) error {

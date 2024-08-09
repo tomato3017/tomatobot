@@ -5,6 +5,10 @@ tomatobot:
     type: "sqlite"
     log_queries: true
     connection_string: "file::memory:?cache=shared" #TODO change to file path
+  heartbeat:
+    interval: 60s
+    url: ""
+    enabled: true
   modules:
     weather:
       api_key: "testkey"

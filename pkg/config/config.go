@@ -35,6 +35,13 @@ type TomatoBot struct {
 	ModulesToLoad  []string      `yaml:"load_modules"`
 	Database       Database      `yaml:"database"`
 	Modules        ModuleConfig  `yaml:"modules"`
+	Heartbeat      Heartbeat     `yaml:"heartbeat"`
+}
+
+type Heartbeat struct {
+	Enabled  bool
+	Interval time.Duration `yaml:"interval"`
+	URL      string        `yaml:"url"`
 }
 
 type Database struct {
