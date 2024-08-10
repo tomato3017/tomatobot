@@ -106,7 +106,8 @@ func (p *poller) topicName(location dbmodels.WeatherPollingLocations, alert owm.
 	case strings.Contains(alertNameUpper, "ADVISORY"):
 		return fmt.Sprintf("%s.%s.advisory", WeatherPollerTopic, location.ZipCode)
 	default:
-		panic("Unknown alert type")
+		p.logger.Error().Msgf("Unknown alert type: %s", alert.Event)
+		return fmt.Sprintf("%s.%s.unknown", WeatherPollerTopic, location.ZipCode)
 	}
 }
 
