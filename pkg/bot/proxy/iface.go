@@ -10,4 +10,5 @@ type TGBotImplementation interface {
 	TGBotSendable
 	InnerBotAPI() *tgbotapi.BotAPI
 	SendPrivate(c tgbotapi.Chattable) (tgbotapi.Message, error)
+	IsBotAdmin(userId int64) bool
 }

@@ -6,6 +6,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"github.com/tomato3017/tomatobot/pkg/bot/proxy"
 	"github.com/tomato3017/tomatobot/pkg/command"
 	"github.com/tomato3017/tomatobot/pkg/command/middleware"
 	"github.com/tomato3017/tomatobot/pkg/command/models"
@@ -16,7 +17,7 @@ import (
 type UnSubCmd struct {
 	command.BaseCommand
 	publisher notifications.Publisher
-	tgbot     *tgbotapi.BotAPI
+	botProxy  proxy.TGBotImplementation
 	logger    zerolog.Logger
 }
 
@@ -44,7 +45,7 @@ func (u *UnSubCmd) unsubscribeTopic(ctx context.Context, params models.CommandPa
 		return fmt.Errorf("failed to unsubscribe: %w", err)
 	}
 
-	_, err = u.tgbot.Send(util.NewMessageReply(params.Message, tgbotapi.ModeMarkdownV2, "Unsubscribed from topic"))
+	_, err = u.botProxy.Send(util.NewMessageReply(params.Message, tgbotapi.ModeMarkdownV2, "Unsubscribed from topic"))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
@@ -65,7 +66,7 @@ func (u *UnSubCmd) unsubscribeAllTopics(ctx context.Context, params models.Comma
 		return fmt.Errorf("failed to unsubscribe from all topics: %w", err)
 	}
 
-	_, err := u.tgbot.Send(util.NewMessageReply(params.Message, tgbotapi.ModeMarkdownV2, "Unsubscribed from all topics"))
+	_, err := u.botProxy.Send(util.NewMessageReply(params.Message, tgbotapi.ModeMarkdownV2, "Unsubscribed from all topics"))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
@@ -73,10 +74,10 @@ func (u *UnSubCmd) unsubscribeAllTopics(ctx context.Context, params models.Comma
 	return nil
 }
 
-func newUnSubCmd(publisher notifications.Publisher, tgbot *tgbotapi.BotAPI, logger zerolog.Logger) *UnSubCmd {
+func newUnSubCmd(publisher notifications.Publisher, botProxy proxy.TGBotImplementation, logger zerolog.Logger) *UnSubCmd {
 	return &UnSubCmd{
 		BaseCommand: command.NewBaseCommand(middleware.WithNArgs(1)),
 		publisher:   publisher,
-		tgbot:       tgbot,
+		botProxy:    botProxy,
 	}
 }

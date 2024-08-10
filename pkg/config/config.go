@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/kelseyhightower/envconfig"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -26,23 +27,29 @@ const (
 )
 
 type TomatoBot struct {
-	LogLevel                      LogLevel      `yaml:"loglevel" envconfig:"LOGLEVEL"`
+	LogLevel LogLevel `yaml:"loglevel" envconfig:"LOGLEVEL"`
+
 	Debug                         bool          `yaml:"debug" envconfig:"DEBUG"`
 	TelegramToken                 string        `yaml:"telegramToken" envconfig:"TELEGRAM_TOKEN" validate:"required"`
 	DataDir                       string        `yaml:"data_dir" envconfig:"DATA_DIR" default:"data"`
 	CommandTimeout                time.Duration `yaml:"command_timeout" envconfig:"COMMAND_TIMEOUT" default:"1m"`
 	SendProxiedResponsesToChannel bool          `yaml:"send_proxied_response_to_chat"`
+	BotAdminIds                   []int64       `yaml:"bot_admin_ids" envconfig:"BOT_ADMIN_IDS"`
 	AllModules                    *bool         `yaml:"all_modules"`
 	ModulesToLoad                 []string      `yaml:"load_modules"`
 	Database                      Database      `yaml:"database"`
 	Modules                       ModuleConfig  `yaml:"modules"`
-	Heartbeat      Heartbeat     `yaml:"heartbeat"`
+	Heartbeat                     Heartbeat     `yaml:"heartbeat"`
 }
 
 type Heartbeat struct {
 	Enabled  bool
 	Interval time.Duration `yaml:"interval"`
 	URL      string        `yaml:"url"`
+}
+
+func (t *TomatoBot) IsBotAdmin(id int64) bool {
+	return slices.Contains(t.BotAdminIds, id)
 }
 
 type Database struct {

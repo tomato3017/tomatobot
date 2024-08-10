@@ -98,7 +98,7 @@ func (t *Tomatobot) Run(ctx context.Context) error {
 	t.botProxy = botProxy
 
 	// Initialize modules
-	err = t.initializeModules(ctx, tgbot)
+	err = t.initializeModules(ctx)
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func (t *Tomatobot) openDbConnection(ctx context.Context) error {
 	return nil
 }
 
-func (t *Tomatobot) initializeModules(ctx context.Context, tgbot *tgbotapi.BotAPI) error {
+func (t *Tomatobot) initializeModules(ctx context.Context) error {
 	for name, mod := range t.moduleRegistry {
 		if t.cfg.TomatoBot.AllModules != nil && !*t.cfg.TomatoBot.AllModules {
 			if !slices.Contains(t.cfg.ModulesToLoad, name) {
@@ -171,7 +171,7 @@ func (t *Tomatobot) initializeModules(ctx context.Context, tgbot *tgbotapi.BotAP
 		t.logger.Info().Msgf("Initializing module: %s", name)
 		err := mod.Initialize(ctx, modules.InitializeParameters{
 			Cfg:           t.cfg,
-			TgBot:         tgbot,
+			BotProxy:      t.botProxy,
 			Tomatobot:     t,
 			Logger:        t.logger.With().Str("module", name).Logger(),
 			Notifications: t.notiPublisher,

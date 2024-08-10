@@ -5,6 +5,7 @@ import (
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog"
+	"github.com/tomato3017/tomatobot/pkg/bot/proxy"
 	"github.com/tomato3017/tomatobot/pkg/command"
 	"github.com/tomato3017/tomatobot/pkg/command/middleware"
 	"github.com/tomato3017/tomatobot/pkg/command/models"
@@ -16,7 +17,7 @@ import (
 type TopicSubCmd struct {
 	command.BaseCommand
 
-	tgbot     *tgbotapi.BotAPI
+	botProxy  proxy.TGBotImplementation
 	publisher notifications.Publisher
 	logger    zerolog.Logger
 }
@@ -43,7 +44,7 @@ func (t *TopicSubCmd) Execute(ctx context.Context, params models.CommandParams) 
 		return fmt.Errorf("failed to topic: %w", err)
 	}
 
-	_, err = t.tgbot.Send(util.NewMessageReply(msg, tgbotapi.ModeMarkdownV2,
+	_, err = t.botProxy.Send(util.NewMessageReply(msg, tgbotapi.ModeMarkdownV2,
 		mfmt.Sprintf("Subscribed to topic %m with id %m!", topic, subId)))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
@@ -60,12 +61,12 @@ func (t *TopicSubCmd) Help() string {
 	return "/topic subscribe <topic> - Subscribe to a topic"
 }
 
-func newTopicSubCmd(publisher notifications.Publisher, tgbot *tgbotapi.BotAPI, logger zerolog.Logger) *TopicSubCmd {
+func newTopicSubCmd(publisher notifications.Publisher, botProxy proxy.TGBotImplementation, logger zerolog.Logger) *TopicSubCmd {
 	bCmd := command.NewBaseCommand(middleware.WithNArgs(1))
 	return &TopicSubCmd{
 		BaseCommand: bCmd,
 		publisher:   publisher,
-		tgbot:       tgbot,
+		botProxy:    botProxy,
 		logger:      logger,
 	}
 }

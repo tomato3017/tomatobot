@@ -72,3 +72,47 @@ func WithUserId(userId int64) MiddlewareFunc {
 		return nil
 	}
 }
+
+func WithMiddlewareOR(middlewareFuncs ...MiddlewareFunc) MiddlewareFunc {
+	return func(ctx context.Context, params models.CommandParams) error {
+		for _, middlewareFunc := range middlewareFuncs {
+			if err := middlewareFunc(ctx, params); err == nil {
+				return nil
+			}
+		}
+
+		return fmt.Errorf("no middleware condition met")
+	}
+}
+
+func WithMiddlewareAND(middlewareFuncs ...MiddlewareFunc) MiddlewareFunc {
+	return func(ctx context.Context, params models.CommandParams) error {
+		for _, middlewareFunc := range middlewareFuncs {
+			if err := middlewareFunc(ctx, params); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
+func WithSentDirectToBot() MiddlewareFunc {
+	return func(ctx context.Context, params models.CommandParams) error {
+		if !params.BotProxy.InnerBotAPI().IsMessageToMe(*params.Message) {
+			return fmt.Errorf("message was not sent directly to the bot")
+		}
+
+		return nil
+	}
+}
+
+func WithBotAdminPermission() MiddlewareFunc {
+	return func(ctx context.Context, params models.CommandParams) error {
+		if !params.BotProxy.IsBotAdmin(params.Message.From.ID) {
+			return fmt.Errorf("you are not authorized to use this command")
+		}
+
+		return nil
+	}
+}

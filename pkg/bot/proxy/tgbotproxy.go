@@ -4,12 +4,14 @@ import (
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog"
+	"github.com/tomato3017/tomatobot/pkg/config"
 )
 
 type TGBotProxy struct {
 	sendToChatChannels bool
 	tgbot              *tgbotapi.BotAPI
 	logger             zerolog.Logger
+	cfg                config.TomatoBot
 }
 
 func (t *TGBotProxy) SendPrivate(c tgbotapi.Chattable) (tgbotapi.Message, error) {
@@ -39,6 +41,10 @@ func NewTGBotProxy(tgbot *tgbotapi.BotAPI, options ...ProxyOption) (*TGBotProxy,
 	return tgBotProxy, nil
 }
 
+func (t *TGBotProxy) IsBotAdmin(userId int64) bool {
+	return t.cfg.IsBotAdmin(userId)
+}
+
 func (t *TGBotProxy) Send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
 	return t.handleSendable(c)
 }
@@ -57,7 +63,9 @@ func (t *TGBotProxy) handleSendable(c tgbotapi.Chattable) (tgbotapi.Message, err
 }
 
 func (t *TGBotProxy) handleMessageConfig(msgCfg tgbotapi.MessageConfig) (tgbotapi.Message, error) {
-	if !t.sendToChatChannels && t.idIsChat(msgCfg.ChatID) {
+	if !t.idIsChat(msgCfg.ChatID) {
+		return t.tgbot.Send(msgCfg)
+	} else if !t.sendToChatChannels && t.idIsChat(msgCfg.ChatID) {
 		t.logger.Trace().Msgf("Not sending message to chat channel: %+v", msgCfg)
 		return tgbotapi.Message{}, nil
 	}

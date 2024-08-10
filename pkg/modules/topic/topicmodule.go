@@ -10,7 +10,7 @@ type TopicModule struct {
 }
 
 func (s *TopicModule) Initialize(ctx context.Context, params modules.InitializeParameters) error {
-	topicCmd, err := newTopicCmd(params.Notifications, params.TgBot, params.Logger)
+	topicCmd, err := newTopicCmd(params.Notifications, params.BotProxy, params.Logger)
 	if err != nil {
 		return fmt.Errorf("failed to create command: %w", err)
 	}
