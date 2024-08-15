@@ -22,13 +22,13 @@ type TopicListCmd struct {
 
 func (s *TopicListCmd) Execute(ctx context.Context, params models.CommandParams) error {
 	message := params.Message
-	currentSubs, err := s.publisher.GetSubscriptions(message.Chat.ID)
+	currentSubs, err := s.publisher.GetSubscriptions(message.AssumedChatID())
 	if err != nil {
 		return fmt.Errorf("failed to get subscriptions: %w", err)
 	}
 
 	if len(currentSubs) == 0 {
-		_, err = s.botProxy.Send(util.NewMessageReply(message, tgbotapi.ModeMarkdownV2, "No subscriptions found"))
+		_, err = s.botProxy.Send(util.NewMessageReply(message.InnerMsg(), tgbotapi.ModeMarkdownV2, "No subscriptions found"))
 		if err != nil {
 			return fmt.Errorf("failed to send message: %w", err)
 		}
@@ -42,7 +42,7 @@ func (s *TopicListCmd) Execute(ctx context.Context, params models.CommandParams)
 		outMsg.WriteString(fmt.Sprintf("\t`%s - %s`\n", sub.ID, sub.TopicPattern))
 	}
 
-	_, err = s.botProxy.Send(util.NewMessageReply(message, tgbotapi.ModeMarkdownV2, outMsg.String()))
+	_, err = s.botProxy.Send(util.NewMessageReply(message.InnerMsg(), tgbotapi.ModeMarkdownV2, outMsg.String()))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}

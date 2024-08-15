@@ -41,11 +41,11 @@ func (u *UnSubCmd) unsubscribeTopic(ctx context.Context, params models.CommandPa
 	}
 
 	u.logger.Debug().Msgf("Calling unsubscribe on topic %s", topicUUID)
-	if err := u.publisher.Unsubscribe(topicUUID, params.Message.Chat.ID); err != nil {
+	if err := u.publisher.Unsubscribe(topicUUID, params.Message.AssumedChatID()); err != nil {
 		return fmt.Errorf("failed to unsubscribe: %w", err)
 	}
 
-	_, err = u.botProxy.Send(util.NewMessageReply(params.Message, tgbotapi.ModeMarkdownV2, "Unsubscribed from topic"))
+	_, err = u.botProxy.Send(util.NewMessageReply(params.Message.InnerMsg(), tgbotapi.ModeMarkdownV2, "Unsubscribed from topic"))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
@@ -62,11 +62,11 @@ func (u *UnSubCmd) Help() string {
 }
 
 func (u *UnSubCmd) unsubscribeAllTopics(ctx context.Context, params models.CommandParams) error {
-	if err := u.publisher.UnsubscribeAll(params.Message.Chat.ID); err != nil {
+	if err := u.publisher.UnsubscribeAll(params.Message.AssumedChatID()); err != nil {
 		return fmt.Errorf("failed to unsubscribe from all topics: %w", err)
 	}
 
-	_, err := u.botProxy.Send(util.NewMessageReply(params.Message, tgbotapi.ModeMarkdownV2, "Unsubscribed from all topics"))
+	_, err := u.botProxy.Send(util.NewMessageReply(params.Message.InnerMsg(), tgbotapi.ModeMarkdownV2, "Unsubscribed from all topics"))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}

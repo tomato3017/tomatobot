@@ -36,18 +36,18 @@ func (w *weatherCmdRemove) Execute(ctx context.Context, params models.CommandPar
 		return fmt.Errorf("invalid zip code format, must be 5 digits")
 	}
 
-	w.logger.Debug().Str("zip_code", zipCode).Int64("chat_id", params.Message.Chat.ID).Msg("Removing location")
-	err := w.removeLocationInDb(ctx, zipCode, params.Message.Chat.ID)
+	w.logger.Debug().Str("zip_code", zipCode).Int64("chat_id", params.Message.AssumedChatID()).Msg("Removing location")
+	err := w.removeLocationInDb(ctx, zipCode, params.Message.AssumedChatID())
 	if err != nil {
 		return fmt.Errorf("failed to remove location: %w", err)
 	}
 
-	err = w.removeLocationFromSubscriptions(params.Message.Chat.ID, zipCode)
+	err = w.removeLocationFromSubscriptions(params.Message.AssumedChatID(), zipCode)
 	if err != nil {
 		return fmt.Errorf("failed to remove subscriptions: %w", err)
 	}
 
-	_, err = params.BotProxy.Send(util.NewMessageReply(params.Message, "", "Location removed successfully"))
+	_, err = params.BotProxy.Send(util.NewMessageReply(params.Message.InnerMsg(), "", "Location removed successfully"))
 	if err != nil {
 		return fmt.Errorf("failed to send reply: %w", err)
 	}

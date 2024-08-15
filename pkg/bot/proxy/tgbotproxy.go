@@ -63,9 +63,9 @@ func (t *TGBotProxy) handleSendable(c tgbotapi.Chattable) (tgbotapi.Message, err
 }
 
 func (t *TGBotProxy) handleMessageConfig(msgCfg tgbotapi.MessageConfig) (tgbotapi.Message, error) {
-	if !t.idIsChat(msgCfg.ChatID) {
+	if !t.IdIsChat(msgCfg.ChatID) {
 		return t.tgbot.Send(msgCfg)
-	} else if !t.sendToChatChannels && t.idIsChat(msgCfg.ChatID) {
+	} else if !t.sendToChatChannels && t.IdIsChat(msgCfg.ChatID) {
 		t.logger.Trace().Msgf("Not sending message to chat channel: %+v", msgCfg)
 		return tgbotapi.Message{}, nil
 	}
@@ -73,6 +73,6 @@ func (t *TGBotProxy) handleMessageConfig(msgCfg tgbotapi.MessageConfig) (tgbotap
 	return t.tgbot.Send(msgCfg)
 }
 
-func (t *TGBotProxy) idIsChat(chatID int64) bool {
+func (t *TGBotProxy) IdIsChat(chatID int64) bool {
 	return chatID < 0
 }

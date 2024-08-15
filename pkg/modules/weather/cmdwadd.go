@@ -45,12 +45,12 @@ func (w *weatherCmdAdd) Execute(ctx context.Context, params models.CommandParams
 		return fmt.Errorf("invalid zip code format, must be 5 digits")
 	}
 
-	_, err := w.addWeatherLocation(ctx, rawZipCode, params.Message.Chat.ID)
+	_, err := w.addWeatherLocation(ctx, rawZipCode, params.Message.AssumedChatID())
 	if err != nil {
 		return fmt.Errorf("failed to add weather location: %w", err)
 	}
 
-	_, err = params.BotProxy.Send(util.NewMessageReply(params.Message, "", "Location added successfully"))
+	_, err = params.BotProxy.Send(util.NewMessageReply(params.Message.InnerMsg(), "", "Location added successfully"))
 	if err != nil {
 		return fmt.Errorf("failed to send reply: %w", err)
 	}

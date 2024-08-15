@@ -36,7 +36,7 @@ func (t *TopicSubCmd) Execute(ctx context.Context, params models.CommandParams) 
 
 	sub := notifications.Subscriber{
 		TopicPattern: topic,
-		ChatId:       msg.Chat.ID,
+		ChatId:       msg.AssumedChatID(),
 	}
 
 	subId, err := t.publisher.Subscribe(sub)
@@ -44,7 +44,7 @@ func (t *TopicSubCmd) Execute(ctx context.Context, params models.CommandParams) 
 		return fmt.Errorf("failed to topic: %w", err)
 	}
 
-	_, err = t.botProxy.Send(util.NewMessageReply(msg, tgbotapi.ModeMarkdownV2,
+	_, err = t.botProxy.Send(util.NewMessageReply(msg.InnerMsg(), tgbotapi.ModeMarkdownV2,
 		mfmt.Sprintf("Subscribed to topic %m with id %m!", topic, subId)))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)

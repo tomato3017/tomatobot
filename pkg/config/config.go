@@ -33,6 +33,7 @@ type TomatoBot struct {
 	TelegramToken                 string        `yaml:"telegramToken" envconfig:"TELEGRAM_TOKEN" validate:"required"`
 	DataDir                       string        `yaml:"data_dir" envconfig:"DATA_DIR" default:"data"`
 	CommandTimeout                time.Duration `yaml:"command_timeout" envconfig:"COMMAND_TIMEOUT" default:"1m"`
+	SudoTimeout                   time.Duration `yaml:"sudo_timeout" envconfig:"SUDO_TIMEOUT" default:"10m"`
 	SendProxiedResponsesToChannel bool          `yaml:"send_proxied_response_to_chat"`
 	BotAdminIds                   []int64       `yaml:"bot_admin_ids" envconfig:"BOT_ADMIN_IDS"`
 	AllModules                    *bool         `yaml:"all_modules"`

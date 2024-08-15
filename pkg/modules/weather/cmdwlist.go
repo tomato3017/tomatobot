@@ -34,7 +34,7 @@ func (w *weatherCmdList) Execute(ctx context.Context, params models.CommandParam
 	}
 
 	if len(dbLocations) == 0 {
-		_, err = params.BotProxy.Send(util.NewMessageReply(params.Message, "", "No locations found"))
+		_, err = params.BotProxy.Send(util.NewMessageReply(params.Message.InnerMsg(), "", "No locations found"))
 		if err != nil {
 			return fmt.Errorf("failed to send reply: %w", err)
 		}
@@ -47,7 +47,7 @@ func (w *weatherCmdList) Execute(ctx context.Context, params models.CommandParam
 		outStr.WriteString(fmt.Sprintf("%s \\- %s, %s\n", loc.ZipCode, loc.Name, loc.Country))
 	}
 
-	_, err = params.BotProxy.Send(util.NewMessageReply(params.Message, tgbotapi.ModeMarkdownV2, outStr.String()))
+	_, err = params.BotProxy.Send(util.NewMessageReply(params.Message.InnerMsg(), tgbotapi.ModeMarkdownV2, outStr.String()))
 	if err != nil {
 		return fmt.Errorf("failed to send reply: %w", err)
 	}
@@ -61,7 +61,7 @@ func (w *weatherCmdList) getLocations(ctx context.Context, params models.Command
 	err := w.dbConn.NewSelect().Model(&dbLocations).
 		Join("JOIN weather_poller_chats wp").
 		JoinOn("wp.poller_location_id = weather_polling_locations.id").
-		Where("wp.chat_id = ?", params.Message.Chat.ID).
+		Where("wp.chat_id = ?", params.Message.AssumedChatID()).
 		Where("weather_polling_locations.polling=?", true).Scan(ctx)
 	if err != nil {
 		return nil, err

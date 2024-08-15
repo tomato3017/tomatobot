@@ -29,7 +29,7 @@ func (m *MyIdMod) Initialize(ctx context.Context, params modules.InitializeParam
 
 func (m *MyIdMod) giveMyId(ctx context.Context, params models.CommandParams) error {
 	msg := params.Message
-	_, err := m.botProxy.InnerBotAPI().Send(util.NewMessagePrivate(*msg, "", fmt.Sprintf("Your ID is %d and the Chat ID is %d", msg.From.ID, msg.Chat.ID)))
+	_, err := m.botProxy.InnerBotAPI().Send(util.NewMessagePrivate(msg.InnerMsg(), "", fmt.Sprintf("Your ID is %d and the Chat ID is %d", msg.AssumedUserID(), msg.AssumedChatID())))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}

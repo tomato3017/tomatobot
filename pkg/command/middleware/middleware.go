@@ -41,20 +41,20 @@ func WithMaxArgs(max int) MiddlewareFunc {
 
 func WithAdminPermission() MiddlewareFunc {
 	return func(ctx context.Context, params models.CommandParams) error {
-		if !(params.Message.Chat.IsGroup() || params.Message.Chat.IsSuperGroup()) {
+		if !(params.Message.InnerMsg().Chat.IsGroup() || params.Message.InnerMsg().Chat.IsSuperGroup()) {
 			return nil
 		}
 
 		//TODO caching
 		administrators, err := params.BotProxy.InnerBotAPI().GetChatAdministrators(tgbotapi.ChatAdministratorsConfig{ //nolint:govet
-			tgbotapi.ChatConfig{ChatID: params.Message.Chat.ID},
+			tgbotapi.ChatConfig{ChatID: params.Message.AssumedChatID()},
 		})
 		if err != nil {
 			return fmt.Errorf("failed to get chat administrators: %w", err)
 		}
 
 		for _, administrator := range administrators {
-			if administrator.User.ID == params.Message.From.ID {
+			if administrator.User.ID == params.Message.AssumedUserID() {
 				return nil
 			}
 		}
@@ -65,7 +65,7 @@ func WithAdminPermission() MiddlewareFunc {
 
 func WithUserId(userId int64) MiddlewareFunc {
 	return func(ctx context.Context, params models.CommandParams) error {
-		if params.Message.From.ID != userId {
+		if params.Message.AssumedUserID() != userId {
 			return fmt.Errorf("you are not authorized to use this command")
 		}
 
@@ -99,7 +99,7 @@ func WithMiddlewareAND(middlewareFuncs ...MiddlewareFunc) MiddlewareFunc {
 
 func WithSentDirectToBot() MiddlewareFunc {
 	return func(ctx context.Context, params models.CommandParams) error {
-		if !params.BotProxy.InnerBotAPI().IsMessageToMe(*params.Message) {
+		if !params.BotProxy.InnerBotAPI().IsMessageToMe(*params.Message.InnerMsg()) {
 			return fmt.Errorf("message was not sent directly to the bot")
 		}
 
@@ -109,7 +109,7 @@ func WithSentDirectToBot() MiddlewareFunc {
 
 func WithBotAdminPermission() MiddlewareFunc {
 	return func(ctx context.Context, params models.CommandParams) error {
-		if !params.BotProxy.IsBotAdmin(params.Message.From.ID) {
+		if !params.BotProxy.IsBotAdmin(params.Message.InnerMsg().From.ID) {
 			return fmt.Errorf("you are not authorized to use this command")
 		}
 

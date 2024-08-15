@@ -4,11 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/rs/zerolog"
 	"github.com/tomato3017/tomatobot/pkg/bot/models"
+	"github.com/tomato3017/tomatobot/pkg/bot/models/tgapi"
 	"github.com/tomato3017/tomatobot/pkg/bot/proxy"
 	"github.com/tomato3017/tomatobot/pkg/command"
 	cmdmdls "github.com/tomato3017/tomatobot/pkg/command/models"
+	"github.com/tomato3017/tomatobot/pkg/config"
 	"github.com/tomato3017/tomatobot/pkg/db"
+	"github.com/tomato3017/tomatobot/pkg/modules"
 	"github.com/tomato3017/tomatobot/pkg/modules/myid"
 	"github.com/tomato3017/tomatobot/pkg/modules/topic"
 	"github.com/tomato3017/tomatobot/pkg/modules/weather"
@@ -17,13 +22,15 @@ import (
 	"github.com/tomato3017/tomatobot/pkg/util"
 	"github.com/uptrace/bun"
 	"slices"
+	"strconv"
 	"strings"
-
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/rs/zerolog"
-	"github.com/tomato3017/tomatobot/pkg/config"
-	"github.com/tomato3017/tomatobot/pkg/modules"
 )
+
+type sudoer struct {
+	userId       int64
+	assumeChatId int64
+	assumeFromId int64
+}
 
 type Tomatobot struct {
 	cfg    config.Config
@@ -37,6 +44,8 @@ type Tomatobot struct {
 
 	notiPublisher *notifications.NotificationPublisher
 	botProxy      proxy.TGBotImplementation
+
+	sudoers map[int64]sudoer
 
 	dbConn *bun.DB
 }
@@ -248,9 +257,26 @@ func (t *Tomatobot) handleCommand(ctx context.Context, msg *tgbotapi.Message) {
 	}()
 }
 
+func (t *Tomatobot) handleSystemCommand(ctx context.Context, msg *tgbotapi.Message) (bool, error) {
+	switch strings.ToLower(msg.Command()) {
+	case "help":
+		return true, t.handleHelpCommand(ctx, msg)
+	case "sudo":
+		return true, t.handleSudoCommand(ctx, msg)
+	case "unsudo":
+		return true, t.handleUnsudoCommand(ctx, msg)
+	}
+
+	return false, nil
+}
+
 func (t *Tomatobot) handleCommandThread(ctx context.Context, msg *tgbotapi.Message) error {
-	if strings.ToLower(msg.Command()) == "help" {
-		return t.handleHelpCommand(ctx, msg)
+	handled, err := t.handleSystemCommand(ctx, msg)
+	if err != nil {
+		return fmt.Errorf("failed to handle system command: %w", err)
+	} else if handled {
+		t.logger.Trace().Msgf("System command handled: %s", msg.Command())
+		return nil
 	}
 
 	msgCommand := strings.ToLower(msg.Command())
@@ -259,11 +285,14 @@ func (t *Tomatobot) handleCommandThread(ctx context.Context, msg *tgbotapi.Messa
 		return fmt.Errorf("command %s not found", msgCommand)
 	}
 
+	assumedChatId, assumedUserId := t.getAssumedIds(msg)
+
 	args := strings.Split(msg.CommandArguments(), " ")
+	tgBotMsg := tgapi.NewTGBotMsg(msg, assumedChatId, assumedUserId)
 	params := cmdmdls.CommandParams{
 		CommandName: msgCommand,
 		Args:        args,
-		Message:     msg,
+		Message:     tgBotMsg,
 		BotProxy:    t.botProxy,
 	}
 
@@ -315,6 +344,68 @@ func (t *Tomatobot) RegisterSimpleCommand(name, desc, help string, callback comm
 	return t.RegisterCommand(name, cmd)
 }
 
+func (t *Tomatobot) handleSudoCommand(ctx context.Context, msg *tgbotapi.Message) error {
+	fromId := msg.From.ID
+	if !t.cfg.IsBotAdmin(fromId) {
+		return fmt.Errorf("user is not an admin")
+	}
+
+	if _, ok := t.sudoers[fromId]; ok {
+		return fmt.Errorf("already in sudo mode")
+	}
+
+	args := strings.Split(msg.CommandArguments(), " ")
+	if len(args) != 1 {
+		return fmt.Errorf("invalid number of arguments. requires <chat_id> of sudo")
+	}
+
+	assumeChatId, err := strconv.ParseInt(args[0], 10, 64)
+	if err != nil {
+		return fmt.Errorf("failed to parse chat id: %w", err)
+	}
+
+	if !t.botProxy.IdIsChat(assumeChatId) {
+		return fmt.Errorf("chat id is not a chat")
+	}
+
+	newSudoer := sudoer{
+		userId:       fromId,
+		assumeChatId: assumeChatId,
+		assumeFromId: fromId,
+	}
+
+	t.sudoers[fromId] = newSudoer
+
+	_, err = t.botProxy.Send(util.NewMessageReply(msg, "", fmt.Sprintf("Sudo mode enabled for chat %d", assumeChatId)))
+	return nil
+}
+
+// getAssumedIds returns the assumed chat and user ids for the message
+func (t *Tomatobot) getAssumedIds(msg *tgbotapi.Message) (int64, int64) {
+	fromId := msg.From.ID
+	if sudoer, ok := t.sudoers[fromId]; ok {
+		return sudoer.assumeChatId, sudoer.assumeFromId
+	}
+
+	return msg.Chat.ID, fromId
+}
+
+func (t *Tomatobot) handleUnsudoCommand(ctx context.Context, msg *tgbotapi.Message) error {
+	fromId := msg.From.ID
+	if !t.cfg.IsBotAdmin(fromId) {
+		return fmt.Errorf("user is not an admin")
+	}
+
+	if _, ok := t.sudoers[fromId]; !ok {
+		return fmt.Errorf("not in sudo mode")
+	}
+
+	delete(t.sudoers, fromId)
+
+	_, err := t.botProxy.Send(util.NewMessageReply(msg, "", "Sudo mode disabled"))
+	return err
+}
+
 func NewTomatobot(cfg config.Config, logger zerolog.Logger) *Tomatobot {
 	botRegistry := getModuleRegistry()
 
@@ -325,6 +416,7 @@ func NewTomatobot(cfg config.Config, logger zerolog.Logger) *Tomatobot {
 		loadedModules:   make(map[string]modules.BotModule),
 		commandRegistry: make(map[string]command.TomatobotCommand),
 		chatCallbacks:   make(map[string]func(ctx context.Context, msg tgbotapi.Message)),
+		sudoers:         make(map[int64]sudoer),
 	}
 }
 
