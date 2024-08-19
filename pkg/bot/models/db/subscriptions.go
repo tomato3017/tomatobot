@@ -48,3 +48,17 @@ type NotificationsDupeCache struct {
 	DupeKey    string    `bun:"dupe_key,notnull,unique"`
 	DupeTTLEnd time.Time `bun:"dupe_ttl_end,notnull"`
 }
+
+type Birthdays struct {
+	bun.BaseModel `bun:"birthdays"`
+
+	ID              uuid.UUID `bun:"id,pk"`
+	ChatId          int64     `bun:"chat_id,notnull,unique:birthdays_chat_id_name_key"`
+	Name            string    `bun:"name,notnull,unique:birthdays_chat_id_name_key"`
+	LastAnnouncedAt time.Time `bun:"last_announced_at"`
+
+	//Day month year instead of a timestamp because we don't care about the time
+	Day   int `bun:"day,notnull"`
+	Month int `bun:"month,notnull"`
+	Year  int `bun:"year"`
+}

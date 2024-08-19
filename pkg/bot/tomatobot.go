@@ -14,6 +14,7 @@ import (
 	"github.com/tomato3017/tomatobot/pkg/config"
 	"github.com/tomato3017/tomatobot/pkg/db"
 	"github.com/tomato3017/tomatobot/pkg/modules"
+	"github.com/tomato3017/tomatobot/pkg/modules/birthday"
 	"github.com/tomato3017/tomatobot/pkg/modules/myid"
 	"github.com/tomato3017/tomatobot/pkg/modules/topic"
 	"github.com/tomato3017/tomatobot/pkg/modules/weather"
@@ -21,10 +22,13 @@ import (
 	"github.com/tomato3017/tomatobot/pkg/sqlmigrate"
 	"github.com/tomato3017/tomatobot/pkg/util"
 	"github.com/uptrace/bun"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 )
+
+var quotedCommandsRe = regexp.MustCompile(`"([^"]*)"|(\S+)`)
 
 type sudoer struct {
 	userId       int64
@@ -287,7 +291,7 @@ func (t *Tomatobot) handleCommandThread(ctx context.Context, msg *tgbotapi.Messa
 
 	assumedChatId, assumedUserId := t.getAssumedIds(msg)
 
-	args := strings.Split(msg.CommandArguments(), " ")
+	args := parseArguments(msg.CommandArguments())
 	tgBotMsg := tgapi.NewTGBotMsg(msg, assumedChatId, assumedUserId)
 	params := cmdmdls.CommandParams{
 		CommandName: msgCommand,
@@ -426,4 +430,22 @@ func getModuleRegistry() map[string]modules.BotModule {
 		"topic":   &topic.TopicModule{},
 		"weather": &weather.WeatherModule{},
 	}
+		"myid":     &myid.MyIdMod{},
+		"topic":    &topic.TopicModule{},
+		"weather":  &weather.WeatherModule{},
+		"birthday": &birthday.BirthdayModule{},
+	}
+
+func parseArguments(input string) []string {
+	matches := quotedCommandsRe.FindAllStringSubmatch(input, -1)
+
+	var args []string
+	for _, match := range matches {
+		if match[1] != "" {
+			args = append(args, match[1]) // Quoted string
+		} else {
+			args = append(args, match[2]) // Unquoted word
+		}
+	}
+	return args
 }
