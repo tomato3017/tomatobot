@@ -16,7 +16,7 @@ type WeatherModule struct {
 
 	dbConn bun.IDB
 
-	pollingLocations []dbmodels.WeatherPollingLocations //TODO
+	pollingLocations []dbmodels.WeatherPollingLocations
 	publisher        notifications.Publisher
 
 	weatherPoll *poller
