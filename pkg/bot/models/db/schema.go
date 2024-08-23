@@ -79,6 +79,7 @@ type ChatLogs struct {
 	bun.BaseModel `bun:"chat_logs"`
 
 	ID        int            `bun:"id,pk,autoincrement"`
+	CreatedAt time.Time      `bun:"created_at,notnull,default:current_timestamp"`
 	ChatID    int64          `bun:"chat_id,notnull"`
 	UserID    int64          `bun:"user_id,notnull"`
 	MessageID int64          `bun:"message_id,notnull"`

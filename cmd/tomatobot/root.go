@@ -6,6 +6,7 @@ package tomatobot
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"github.com/oklog/run"
 	"github.com/rs/zerolog"
@@ -113,6 +114,11 @@ func executeBot(args []string) error {
 	}
 
 	if err := runGrp.Run(); err != nil {
+		if errors.Is(err, context.Canceled) {
+			logger.Info().Msg("Bot stopped")
+			return nil
+		}
+
 		logger.Error().Err(err).Msg("error running bot")
 		os.Exit(1)
 	}

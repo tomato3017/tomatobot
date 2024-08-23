@@ -48,7 +48,7 @@ type Tomatobot struct {
 
 	notiPublisher *notifications.NotificationPublisher
 	botProxy      proxy.TGBotImplementation
-	chatLogger    ChatLogger
+	chatLogger    *DBChatLogger
 
 	sudoers map[int64]sudoer
 
@@ -104,7 +104,8 @@ func (t *Tomatobot) Run(ctx context.Context) error {
 		notifications.WithLogger(t.logger.With().Str("module", "notifications").Logger()))
 
 	// Initialize the chat logger
-	t.chatLogger = NewDBChatLogger(t.dbConn)
+	t.chatLogger = NewDBChatLogger(t.dbConn, t.logger.With().Str("module", "chat_logger").Logger())
+	t.chatLogger.Start(ctx)
 	defer util.CloseSafely(t.chatLogger)
 
 	botProxy, err := proxy.NewTGBotProxy(tgbot,
@@ -141,7 +142,7 @@ func (t *Tomatobot) Run(ctx context.Context) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, context.Canceled):
-			t.logger.Info().Msg("Main loop cancelled")
+			t.logger.Trace().Msg("Main loop cancelled")
 		default:
 			t.logger.Error().Err(err).Msg("Main loop exited with error")
 			if err := t.Shutdown(ctx); err != nil {
@@ -156,7 +157,7 @@ func (t *Tomatobot) Run(ctx context.Context) error {
 		t.logger.Error().Err(err).Msg("Failed to shutdown bot")
 	}
 
-	return nil
+	return err
 }
 
 func (t *Tomatobot) openDbConnection(ctx context.Context) error {
@@ -215,7 +216,7 @@ func (t *Tomatobot) runMainLoop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("context cancelled")
+			return ctx.Err()
 		case update := <-updates:
 			go func(ctx context.Context, update tgbotapi.Update) {
 				if err := t.handleUpdate(ctx, update); err != nil {
