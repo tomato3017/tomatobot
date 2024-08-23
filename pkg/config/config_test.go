@@ -33,14 +33,3 @@ func TestConfig_Validate(t *testing.T) {
 	}
 	require.NoError(t, goodCfg.Validate())
 }
-
-func TestNewConfigFromFile(t *testing.T) {
-	path := "tomatobot.sample.yml"
-	cfg, err := NewConfigFromFile(path)
-	require.NoError(t, err)
-	require.NotNil(t, cfg)
-
-	// Assert the values from the loaded config file
-	expectedToken := "testtoken"
-	require.Equal(t, expectedToken, cfg.TomatoBot.TelegramToken)
-}

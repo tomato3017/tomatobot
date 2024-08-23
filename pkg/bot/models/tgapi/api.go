@@ -1,29 +1,41 @@
 package tgapi
 
-import tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+import (
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+)
 
-type TGBotMsg struct {
-	innerMsg      *tgbotapi.Message
-	assumedChatID int64
-	assumedUserID int64
+type TGBotAssumedIds struct {
+	ChatID int64
+	UserID int64
 }
 
-func NewTGBotMsg(msg *tgbotapi.Message, assumedChatID, assumedUserID int64) TGBotMsg {
+type TGBotMsg struct {
+	innerMsg   *tgbotapi.Message
+	assumedIds TGBotAssumedIds
+
+	normalizedTextData []SerializableTextData
+}
+
+func NewTGBotMsg(msg *tgbotapi.Message, assumedIds TGBotAssumedIds, normalizedData []SerializableTextData) TGBotMsg {
 	return TGBotMsg{
-		innerMsg:      msg,
-		assumedChatID: assumedChatID,
-		assumedUserID: assumedUserID,
+		innerMsg:           msg,
+		assumedIds:         assumedIds,
+		normalizedTextData: normalizedData,
 	}
 }
 
 func (t *TGBotMsg) AssumedChatID() int64 {
-	return t.assumedChatID
+	return t.assumedIds.ChatID
 }
 
 func (t *TGBotMsg) AssumedUserID() int64 {
-	return t.assumedUserID
+	return t.assumedIds.UserID
 }
 
 func (t *TGBotMsg) InnerMsg() *tgbotapi.Message {
 	return t.innerMsg
+}
+
+func (t *TGBotMsg) NormalizedTextData() []SerializableTextData {
+	return t.normalizedTextData
 }

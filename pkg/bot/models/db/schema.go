@@ -1,8 +1,12 @@
 package db
 
 import (
+	"context"
+	"fmt"
 	"github.com/google/uuid"
+	"github.com/tomato3017/tomatobot/pkg/bot/models/tgapi"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/schema"
 	"time"
 )
 
@@ -61,4 +65,31 @@ type Birthdays struct {
 	Day   int `bun:"day,notnull"`
 	Month int `bun:"month,notnull"`
 	Year  int `bun:"year"`
+}
+
+type TelegramUser struct {
+	bun.BaseModel `bun:"telegram_users"`
+
+	ID       int64       `bun:"id,pk"`
+	UserName string      `bun:"username,notnull"`
+	Chats    []*ChatLogs `bun:"rel:has-many,join:id=user_id"`
+}
+
+type ChatLogs struct {
+	bun.BaseModel `bun:"chat_logs"`
+
+	ID        int            `bun:"id,pk,autoincrement"`
+	ChatID    int64          `bun:"chat_id,notnull"`
+	UserID    int64          `bun:"user_id,notnull"`
+	MessageID int64          `bun:"message_id,notnull"`
+	Type      tgapi.TextData `bun:"type,notnull"`
+	Message   string         `bun:"message,notnull"`
+}
+
+func (c *ChatLogs) BeforeAppendModel(ctx context.Context, query schema.Query) error {
+	if !c.Type.IsValid() {
+		return fmt.Errorf("invalid type %d", c.Type)
+	}
+
+	return nil
 }

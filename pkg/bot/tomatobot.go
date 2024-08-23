@@ -44,10 +44,11 @@ type Tomatobot struct {
 	moduleRegistry  map[string]modules.BotModule
 	loadedModules   map[string]modules.BotModule
 	commandRegistry map[string]command.TomatobotCommand
-	chatCallbacks   map[string]func(ctx context.Context, msg tgbotapi.Message)
+	chatCallbacks   map[string]func(ctx context.Context, msg tgapi.TGBotMsg)
 
 	notiPublisher *notifications.NotificationPublisher
 	botProxy      proxy.TGBotImplementation
+	chatLogger    ChatLogger
 
 	sudoers map[int64]sudoer
 
@@ -56,7 +57,7 @@ type Tomatobot struct {
 
 var _ models.TomatobotInstance = &Tomatobot{}
 
-func (t *Tomatobot) RegisterChatCallback(name string, handler func(ctx context.Context, msg tgbotapi.Message)) error {
+func (t *Tomatobot) RegisterChatCallback(name string, handler func(ctx context.Context, msg tgapi.TGBotMsg)) error {
 	if _, ok := t.chatCallbacks[name]; ok {
 		return fmt.Errorf("chat callback %s already registered", name)
 	}
@@ -101,6 +102,10 @@ func (t *Tomatobot) Run(ctx context.Context) error {
 	// Initialize the notification publisher
 	t.notiPublisher = notifications.NewNotificationPublisher(tgbot, t.dbConn,
 		notifications.WithLogger(t.logger.With().Str("module", "notifications").Logger()))
+
+	// Initialize the chat logger
+	t.chatLogger = NewDBChatLogger(t.dbConn)
+	defer util.CloseSafely(t.chatLogger)
 
 	botProxy, err := proxy.NewTGBotProxy(tgbot,
 		proxy.WithLogger(t.logger.With().Str("module", "proxy").Logger()),
@@ -212,9 +217,12 @@ func (t *Tomatobot) runMainLoop(ctx context.Context) error {
 		case <-ctx.Done():
 			return fmt.Errorf("context cancelled")
 		case update := <-updates:
-			if err := t.handleUpdate(ctx, update); err != nil {
-				return fmt.Errorf("failed to handle update: %w", err)
-			}
+			go func(ctx context.Context, update tgbotapi.Update) {
+				if err := t.handleUpdate(ctx, update); err != nil {
+					t.logger.Error().Err(err).Msg("Failed to handle update")
+				}
+			}(ctx, update)
+
 		}
 	}
 }
@@ -225,11 +233,25 @@ func (t *Tomatobot) handleUpdate(ctx context.Context, update tgbotapi.Update) er
 		return nil
 	}
 
-	msg := update.Message
-	if msg.IsCommand() {
-		t.handleCommand(ctx, msg)
+	serializableData, err := t.getTextData(update.Message)
+	if err != nil {
+		return fmt.Errorf("failed to get text data: %w", err)
+	}
+
+	assumedMsgIds := t.getAssumedIds(update.Message)
+	wrappedMsg := tgapi.NewTGBotMsg(update.Message, assumedMsgIds, serializableData)
+
+	t.callChatLogger(ctx, wrappedMsg)
+
+	if wrappedMsg.InnerMsg().IsCommand() {
+		err := t.handleCommand(ctx, wrappedMsg)
+		if err != nil {
+			return fmt.Errorf("failed to handle command: %w", err)
+		}
+	} else if wrappedMsg.InnerMsg().Text == "" {
+		t.logger.Trace().Msg("Ignoring message with no text")
 	} else {
-		err := t.handleChatMessage(ctx, msg)
+		err := t.handleChatMessage(ctx, wrappedMsg)
 		if err != nil {
 			return fmt.Errorf("failed to handle chat message: %w", err)
 		}
@@ -238,31 +260,29 @@ func (t *Tomatobot) handleUpdate(ctx context.Context, update tgbotapi.Update) er
 	return nil
 }
 
-func (t *Tomatobot) handleCommand(ctx context.Context, msg *tgbotapi.Message) {
-	go func() {
-		ctx, cancel := context.WithTimeout(ctx, t.cfg.TomatoBot.CommandTimeout)
-		defer cancel()
+func (t *Tomatobot) handleCommand(ctx context.Context, msg tgapi.TGBotMsg) error {
+	ctx, cancel := context.WithTimeout(ctx, t.cfg.TomatoBot.CommandTimeout)
+	defer cancel()
 
-		if err := t.handleCommandThread(ctx, msg); err != nil {
-			t.logger.Error().Err(err).Msg("Failed to handle command")
-			_, err := t.botProxy.Send(tgbotapi.MessageConfig{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID:           msg.Chat.ID,
-					ReplyToMessageID: msg.MessageID,
-				},
-				Text:                  fmt.Sprintf("Error: %s", err.Error()),
-				DisableWebPagePreview: false,
-			})
+	if err := t.handleCommandThread(ctx, msg); err != nil {
+		t.logger.Error().Err(err).Msg("Failed to handle command")
+		_, err := t.botProxy.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:           msg.InnerMsg().Chat.ID,
+				ReplyToMessageID: msg.InnerMsg().MessageID,
+			},
+			Text:                  fmt.Sprintf("Error: %s", err.Error()),
+			DisableWebPagePreview: false,
+		})
 
-			if err != nil {
-				t.logger.Error().Err(err).Msg("Failed to send error message")
-			}
-		}
-	}()
+		return fmt.Errorf("failed to send error message: %w", err)
+	}
+
+	return nil
 }
 
-func (t *Tomatobot) handleSystemCommand(ctx context.Context, msg *tgbotapi.Message) (bool, error) {
-	switch strings.ToLower(msg.Command()) {
+func (t *Tomatobot) handleSystemCommand(ctx context.Context, msg tgapi.TGBotMsg) (bool, error) {
+	switch strings.ToLower(msg.InnerMsg().Command()) {
 	case "help":
 		return true, t.handleHelpCommand(ctx, msg)
 	case "sudo":
@@ -274,39 +294,36 @@ func (t *Tomatobot) handleSystemCommand(ctx context.Context, msg *tgbotapi.Messa
 	return false, nil
 }
 
-func (t *Tomatobot) handleCommandThread(ctx context.Context, msg *tgbotapi.Message) error {
+func (t *Tomatobot) handleCommandThread(ctx context.Context, msg tgapi.TGBotMsg) error {
 	handled, err := t.handleSystemCommand(ctx, msg)
 	if err != nil {
 		return fmt.Errorf("failed to handle system command: %w", err)
 	} else if handled {
-		t.logger.Trace().Msgf("System command handled: %s", msg.Command())
+		t.logger.Trace().Msgf("System command handled: %s", msg.InnerMsg().Command())
 		return nil
 	}
 
-	msgCommand := strings.ToLower(msg.Command())
+	msgCommand := strings.ToLower(msg.InnerMsg().Command())
 	cmdHandler, ok := t.commandRegistry[msgCommand]
 	if !ok {
 		return fmt.Errorf("command %s not found", msgCommand)
 	}
 
-	assumedChatId, assumedUserId := t.getAssumedIds(msg)
-
-	args := parseArguments(msg.CommandArguments())
-	tgBotMsg := tgapi.NewTGBotMsg(msg, assumedChatId, assumedUserId)
+	args := parseArguments(msg.InnerMsg().CommandArguments())
 	params := cmdmdls.CommandParams{
 		CommandName: msgCommand,
 		Args:        args,
-		Message:     tgBotMsg,
+		Message:     msg,
 		BotProxy:    t.botProxy,
 	}
 
 	return cmdHandler.Execute(ctx, params)
 }
 
-func (t *Tomatobot) handleChatMessage(ctx context.Context, msg *tgbotapi.Message) error {
+func (t *Tomatobot) handleChatMessage(ctx context.Context, msg tgapi.TGBotMsg) error {
 	for name, handler := range t.chatCallbacks {
 		t.logger.Trace().Msgf("Running chat callback: %s", name)
-		handler(ctx, *msg)
+		handler(ctx, msg)
 	}
 	return nil
 }
@@ -322,7 +339,7 @@ func (t *Tomatobot) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (t *Tomatobot) handleHelpCommand(ctx context.Context, msg *tgbotapi.Message) error {
+func (t *Tomatobot) handleHelpCommand(ctx context.Context, msg tgapi.TGBotMsg) error {
 	helpMsg := "Available commands:\n"
 	for name, cmd := range t.commandRegistry {
 		helpMsg += fmt.Sprintf("/%s - %s\n", name, cmd.Description())
@@ -330,8 +347,8 @@ func (t *Tomatobot) handleHelpCommand(ctx context.Context, msg *tgbotapi.Message
 
 	_, err := t.tgbot.Send(tgbotapi.MessageConfig{
 		BaseChat: tgbotapi.BaseChat{
-			ChatID:           msg.Chat.ID,
-			ReplyToMessageID: msg.MessageID,
+			ChatID:           msg.InnerMsg().Chat.ID,
+			ReplyToMessageID: msg.InnerMsg().MessageID,
 		},
 		Text:                  helpMsg,
 		DisableWebPagePreview: false,
@@ -348,8 +365,8 @@ func (t *Tomatobot) RegisterSimpleCommand(name, desc, help string, callback comm
 	return t.RegisterCommand(name, cmd)
 }
 
-func (t *Tomatobot) handleSudoCommand(ctx context.Context, msg *tgbotapi.Message) error {
-	fromId := msg.From.ID
+func (t *Tomatobot) handleSudoCommand(ctx context.Context, msg tgapi.TGBotMsg) error {
+	fromId := msg.InnerMsg().From.ID
 	if !t.cfg.IsBotAdmin(fromId) {
 		return fmt.Errorf("user is not an admin")
 	}
@@ -358,7 +375,7 @@ func (t *Tomatobot) handleSudoCommand(ctx context.Context, msg *tgbotapi.Message
 		return fmt.Errorf("already in sudo mode")
 	}
 
-	args := strings.Split(msg.CommandArguments(), " ")
+	args := strings.Split(msg.InnerMsg().CommandArguments(), " ")
 	if len(args) != 1 {
 		return fmt.Errorf("invalid number of arguments. requires <chat_id> of sudo")
 	}
@@ -380,22 +397,28 @@ func (t *Tomatobot) handleSudoCommand(ctx context.Context, msg *tgbotapi.Message
 
 	t.sudoers[fromId] = newSudoer
 
-	_, err = t.botProxy.Send(util.NewMessageReply(msg, "", fmt.Sprintf("Sudo mode enabled for chat %d", assumeChatId)))
+	_, err = t.botProxy.Send(util.NewMessageReply(msg.InnerMsg(), "", fmt.Sprintf("Sudo mode enabled for chat %d", assumeChatId)))
 	return nil
 }
 
 // getAssumedIds returns the assumed chat and user ids for the message
-func (t *Tomatobot) getAssumedIds(msg *tgbotapi.Message) (int64, int64) {
+func (t *Tomatobot) getAssumedIds(msg *tgbotapi.Message) tgapi.TGBotAssumedIds {
 	fromId := msg.From.ID
 	if sudoer, ok := t.sudoers[fromId]; ok {
-		return sudoer.assumeChatId, sudoer.assumeFromId
+		return tgapi.TGBotAssumedIds{
+			ChatID: sudoer.assumeChatId,
+			UserID: sudoer.assumeFromId,
+		}
 	}
 
-	return msg.Chat.ID, fromId
+	return tgapi.TGBotAssumedIds{
+		ChatID: msg.Chat.ID,
+		UserID: fromId,
+	}
 }
 
-func (t *Tomatobot) handleUnsudoCommand(ctx context.Context, msg *tgbotapi.Message) error {
-	fromId := msg.From.ID
+func (t *Tomatobot) handleUnsudoCommand(ctx context.Context, msg tgapi.TGBotMsg) error {
+	fromId := msg.InnerMsg().From.ID
 	if !t.cfg.IsBotAdmin(fromId) {
 		return fmt.Errorf("user is not an admin")
 	}
@@ -406,8 +429,35 @@ func (t *Tomatobot) handleUnsudoCommand(ctx context.Context, msg *tgbotapi.Messa
 
 	delete(t.sudoers, fromId)
 
-	_, err := t.botProxy.Send(util.NewMessageReply(msg, "", "Sudo mode disabled"))
+	_, err := t.botProxy.Send(util.NewMessageReply(msg.InnerMsg(), "", "Sudo mode disabled"))
 	return err
+}
+
+// getTextData returns the text data from a message. If the message contains binary data, it will be returned as base64 if possible.
+func (t *Tomatobot) getTextData(msg *tgbotapi.Message) ([]tgapi.SerializableTextData, error) {
+	data := make([]tgapi.SerializableTextData, 0)
+
+	if msg.Text != "" {
+		data = append(data, tgapi.SerializableTextData{
+			Type:    tgapi.TextDataText,
+			Message: []byte(msg.Text),
+		})
+	}
+
+	//todo: add support for other types of data
+
+	return data, nil
+}
+
+func (t *Tomatobot) callChatLogger(ctx context.Context, msg tgapi.TGBotMsg) {
+	go func() {
+		ctx, cf := context.WithTimeout(ctx, t.cfg.ChatLoggingTimeout)
+		defer cf()
+
+		if err := t.chatLogger.LogChats(ctx, msg); err != nil {
+			t.logger.Error().Err(err).Msg("Failed to log chat")
+		}
+	}()
 }
 
 func NewTomatobot(cfg config.Config, logger zerolog.Logger) *Tomatobot {
@@ -419,7 +469,7 @@ func NewTomatobot(cfg config.Config, logger zerolog.Logger) *Tomatobot {
 		moduleRegistry:  botRegistry,
 		loadedModules:   make(map[string]modules.BotModule),
 		commandRegistry: make(map[string]command.TomatobotCommand),
-		chatCallbacks:   make(map[string]func(ctx context.Context, msg tgbotapi.Message)),
+		chatCallbacks:   make(map[string]func(ctx context.Context, msg tgapi.TGBotMsg)),
 		sudoers:         make(map[int64]sudoer),
 	}
 }

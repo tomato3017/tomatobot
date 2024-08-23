@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"github.com/tomato3017/tomatobot/pkg/config"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
+	"github.com/uptrace/bun/driver/pgdriver"
+
 	"github.com/uptrace/bun/driver/sqliteshim"
 	"github.com/uptrace/bun/extra/bundebug"
 )
@@ -23,9 +26,20 @@ func openConnection(dbCfg config.Database) (*bun.DB, error) {
 	switch *dbCfg.DbType {
 	case config.DBTypeSQLite:
 		return openSQLLiteConnection(dbCfg)
+	case config.DBTypePostgres:
+		return openPostgresConnection(dbCfg)
 	default:
 		return nil, fmt.Errorf("unsupported database type: %s", dbCfg.DbType)
 	}
+}
+
+func openPostgresConnection(cfg config.Database) (*bun.DB, error) {
+	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(cfg.ConnectionString)))
+	bunDb := bun.NewDB(sqldb, pgdialect.New())
+
+	bunDb.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true), bundebug.WithEnabled(cfg.LogQueries)))
+
+	return bunDb, nil
 }
 
 func openSQLLiteConnection(dbCfg config.Database) (*bun.DB, error) {
