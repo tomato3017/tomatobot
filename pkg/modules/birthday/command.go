@@ -38,7 +38,7 @@ func newBirthdayCmd(dbConn bun.IDB, logger zerolog.Logger, publisher notificatio
 	}
 
 	//birthday add <name> <year> <month> <day>
-	err = birthdayCmd.RegisterSubcommand("add", newBirthdayAddCmd(dbConn, logger, publisher), middleware.WithNArgs(2))
+	err = birthdayCmd.RegisterSubcommand("add", newBirthdayAddCmd(dbConn, logger, publisher))
 	if err != nil {
 		return nil, fmt.Errorf("unable to register subcommand %s. Err: %w", "add", err)
 	}

@@ -337,12 +337,15 @@ func (n *NotificationPublisher) handleBusMessage(ctx context.Context, msg Messag
 	}
 
 	for _, chatId := range chatIds {
+		n.logger.Trace().Msgf("Sending message to chat: %d", chatId)
 		// check if the message is a duplicate
 		dupKey := fmt.Sprintf("%d-%s", chatId, msg.DuplicationKey())
+		n.logger.Trace().Msgf("Message dupe key: %s", dupKey)
 		if ok := n.dupeCache.Has(dupKey); ok {
 			logger.Trace().Msgf("Duplicate message detected: %s", msg.String())
 			continue
 		}
+		n.logger.Trace().Msgf("Message not a duplicate: %s", msg.String())
 
 		// send the message to the chat
 		_, err := n.tgbot.Send(tgbotapi.NewMessage(chatId, msg.Msg))
@@ -401,6 +404,8 @@ func (n *NotificationPublisher) getChatIdsForTopic(topic string) ([]int64, error
 	for id := range chatIdSet {
 		chatIds = append(chatIds, id)
 	}
+
+	n.logger.Trace().Msgf("Setting cache for topic: %s TO: %+v", topic, chatIds)
 
 	n.subCache.Set(topic, chatIds, ttlcache.DefaultTTL)
 	return chatIds, nil

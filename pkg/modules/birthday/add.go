@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog"
 	dbmodels "github.com/tomato3017/tomatobot/pkg/bot/models/db"
 	"github.com/tomato3017/tomatobot/pkg/command"
+	"github.com/tomato3017/tomatobot/pkg/command/middleware"
 	"github.com/tomato3017/tomatobot/pkg/command/models"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
 	"github.com/tomato3017/tomatobot/pkg/util"
@@ -27,13 +28,15 @@ var _ command.TomatobotCommand = &birthdayCmdAdd{}
 
 func newBirthdayAddCmd(dbConn bun.IDB, logger zerolog.Logger, publisher notifications.Publisher) command.TomatobotCommand {
 	return &birthdayCmdAdd{
-		BaseCommand: command.NewBaseCommand(),
+		BaseCommand: command.NewBaseCommand(middleware.WithNArgs(2)),
 		dbConn:      dbConn,
 		logger:      logger,
 		publisher:   publisher,
 	}
 }
 
+// Execute adds a birthday to the database
+// /birthday add <name> <YYYY-MM-DD>
 func (b *birthdayCmdAdd) Execute(ctx context.Context, params models.CommandParams) error {
 	name := strings.Join(params.Args[:len(params.Args)-1], " ")
 	date := params.Args[len(params.Args)-1]
