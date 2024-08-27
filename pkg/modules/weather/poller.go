@@ -10,6 +10,7 @@ import (
 	"github.com/tomato3017/tomatobot/pkg/config"
 	"github.com/tomato3017/tomatobot/pkg/modules/weather/owm"
 	"github.com/tomato3017/tomatobot/pkg/notifications"
+	"github.com/tomato3017/tomatobot/pkg/util"
 	"github.com/uptrace/bun"
 	"strings"
 	"sync"
@@ -152,7 +153,7 @@ func (p *poller) getRenderedWeatherAlert(alert owm.Alerts, location dbmodels.Wea
 			Event:       alert.Event,
 			Start:       alert.Start,
 			End:         alert.End,
-			Description: alert.Description,
+			Description: util.TruncateString(alert.Description, 512, "..."),
 		},
 		WeatherPollingLocations: dbmodels.WeatherPollingLocations{
 			Name: location.Name,

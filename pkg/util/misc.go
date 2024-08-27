@@ -15,3 +15,11 @@ func CloseSafely(closer io.Closer) {
 		fmt.Printf("Error closing resource: %v\n", err)
 	}
 }
+
+func TruncateString(str string, length int, appendStr string) string {
+	if len(str) <= length {
+		return str
+	}
+
+	return fmt.Sprintf("%s%s", str[:length], "...")
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/rs/zerolog"
 	dbmodels "github.com/tomato3017/tomatobot/pkg/bot/models/db"
+	"github.com/tomato3017/tomatobot/pkg/util"
 	"github.com/uptrace/bun"
 	"regexp"
 	"strings"
@@ -106,6 +107,10 @@ func NewNotificationPublisher(tgbot *tgbotapi.BotAPI, dbConn bun.IDB, options ..
 	}
 	if err := publisher.populateDupeCache(); err != nil {
 		publisher.logger.Fatal().Err(err).Msg("failed to populate dupe cache")
+	}
+
+	if err := publisher.updateSubsFromDb(); err != nil {
+		publisher.logger.Fatal().Err(err).Msg("failed to update subscriptions from db")
 	}
 
 	publisher.dupeCache.OnInsertion(publisher.insertDupeCache)
@@ -341,11 +346,12 @@ func (n *NotificationPublisher) handleBusMessage(ctx context.Context, msg Messag
 		// check if the message is a duplicate
 		dupKey := fmt.Sprintf("%d-%s", chatId, msg.DuplicationKey())
 		n.logger.Trace().Msgf("Message dupe key: %s", dupKey)
+		trunMsg := util.TruncateString(msg.String(), 1024, "")
 		if ok := n.dupeCache.Has(dupKey); ok {
-			logger.Trace().Msgf("Duplicate message detected: %s", msg.String())
+			logger.Trace().Msgf("Duplicate message detected: %s", trunMsg)
 			continue
 		}
-		n.logger.Trace().Msgf("Message not a duplicate: %s", msg.String())
+		n.logger.Trace().Msgf("Message not a duplicate: %s", trunMsg)
 
 		// send the message to the chat
 		_, err := n.tgbot.Send(tgbotapi.NewMessage(chatId, msg.Msg))
