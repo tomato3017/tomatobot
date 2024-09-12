@@ -93,6 +93,7 @@ func (p *poller) poll(ctx context.Context) error {
 func (p *poller) birthdayCheck(ctx context.Context) error {
 	//Get all the birthdays that are today
 	currentTime := time.Now()
+
 	_, month, day := currentTime.Date()
 	birthdays, err := p.getBirthdays(ctx, day, month)
 	if err != nil {
@@ -124,6 +125,22 @@ func (p *poller) getBirthdays(ctx context.Context, day int, month time.Month) ([
 func (p *poller) announceBirthdays(ctx context.Context, birthdays []dbmodels.Birthdays) error {
 	p.logger.Debug().Msg("Announcing birthdays")
 	for _, birthday := range birthdays {
+		if birthday.TZ == "" {
+			birthday.TZ = "America/New_York"
+		}
+
+		currentTime := time.Now()
+		loc, err := time.LoadLocation(birthday.TZ)
+		if err != nil {
+			return fmt.Errorf("failed to load timezone: %w", err)
+		}
+
+		bdayDay := currentTime.In(loc).Day()
+		if bdayDay != birthday.Day {
+			p.logger.Trace().Msgf("Skipping birthday for %s, day %d does not match %d. Likely due to timezone", birthday.Name, bdayDay, birthday.Day)
+			continue
+		}
+
 		p.logger.Trace().Msgf("Announcing birthday for %s with age %d", birthday.Name, p.getAge(birthday))
 		msg, err := p.generateBirthdayMessage(birthday)
 		if err != nil {

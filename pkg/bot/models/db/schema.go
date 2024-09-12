@@ -60,6 +60,7 @@ type Birthdays struct {
 	ChatId          int64     `bun:"chat_id,notnull,unique:birthdays_chat_id_name_key"`
 	Name            string    `bun:"name,notnull,unique:birthdays_chat_id_name_key"`
 	LastAnnouncedAt time.Time `bun:"last_announced_at"`
+	TZ              string    `bun:"tz,default:'America/New_York'"`
 
 	//Day month year instead of a timestamp because we don't care about the time
 	Day   int `bun:"day,notnull"`
