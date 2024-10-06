@@ -62,7 +62,7 @@ func (p *poller) Start(ctx context.Context) {
 	go func(ctx context.Context) {
 		defer p.wg.Done()
 		if err := p.poll(ctx); err != nil {
-			p.logger.Error().Err(err).Msg("Failed to check birthdays")
+			p.logger.Fatal().Err(err).Msg("Failed to check birthdays")
 		}
 	}(ctx)
 }
