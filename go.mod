@@ -19,6 +19,7 @@ require (
 	github.com/uptrace/bun/driver/pgdriver v1.2.1
 	github.com/uptrace/bun/driver/sqliteshim v1.2.1
 	github.com/uptrace/bun/extra/bundebug v1.2.1
+	golang.org/x/exp v0.0.0-20231108232855-2478ac86f678
 	golang.org/x/text v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
 )

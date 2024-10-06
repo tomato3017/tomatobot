@@ -3,6 +3,8 @@ package util
 import (
 	"fmt"
 	"io"
+
+	"golang.org/x/exp/constraints"
 )
 
 func CloseSafely(closer io.Closer) {
@@ -22,4 +24,19 @@ func TruncateString(str string, length int, appendStr string) string {
 	}
 
 	return fmt.Sprintf("%s%s", str[:length], "...")
+}
+
+type NonZeroable interface {
+	constraints.Ordered | ~string
+}
+
+// FirstNonZero returns the first non-zero value from the provided arguments.
+func FirstNonZero[T NonZeroable](values ...T) T {
+	var zero T
+	for _, value := range values {
+		if value != zero {
+			return value
+		}
+	}
+	return zero
 }

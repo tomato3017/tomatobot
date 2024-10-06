@@ -73,3 +73,41 @@ func TestPoller_publishWeatherForLocation(t *testing.T) {
 
 	require.NoError(t, err)
 }
+
+func TestPoller_getDedupeKey(t *testing.T) {
+	testPoller := newPoller(pollerNewArgs{
+		publisher: nil,
+		locations: make([]dbmodels.WeatherPollingLocations, 0),
+		cfg:       config.WeatherConfig{},
+		logger:    zerolog.Logger{},
+		dbConn:    nil,
+	})
+
+	location := dbmodels.WeatherPollingLocations{
+		Name:    "TestLocation",
+		ZipCode: "12345",
+	}
+
+	alert := owm.Alerts{
+		Event: "TestEvent",
+		End:   1636156800, // Example timestamp
+	}
+
+	expectedDedupeKey := "TestLocation_TestEvent_1636156800"
+	actualDedupeKey := testPoller.getDedupeKey(location, alert)
+
+	require.Equal(t, expectedDedupeKey, actualDedupeKey)
+
+	location.Name = ""
+	expectedDedupeKey = "12345_TestEvent_1636156800"
+	actualDedupeKey = testPoller.getDedupeKey(location, alert)
+
+	require.Equal(t, expectedDedupeKey, actualDedupeKey)
+
+	//Use the storm name if it exists
+	alert.Description = "SEVERE THUNDERSTORM WATCH 656 REMAINS VALID UNTIL 8 PM EDT THIS\nEVENING FOR THE FOLLOWING AREAS\n"
+	expectedDedupeKey = "12345_THUNDERSTORM WATCH 656"
+	actualDedupeKey = testPoller.getDedupeKey(location, alert)
+
+	require.Equal(t, expectedDedupeKey, actualDedupeKey)
+}

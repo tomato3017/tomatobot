@@ -12,6 +12,7 @@ import (
 	"github.com/tomato3017/tomatobot/pkg/notifications"
 	"github.com/tomato3017/tomatobot/pkg/util"
 	"github.com/uptrace/bun"
+	"regexp"
 	"strings"
 	"sync"
 	"text/template"
@@ -19,6 +20,15 @@ import (
 )
 
 const WeatherPollerTopic = "weather"
+
+const (
+	topicFmtWatch    = "%s.%s.watch"
+	topicFmtWarning  = "%s.%s.warning"
+	topicFmtAdvisory = "%s.%s.advisory"
+	topicFmtUnknown  = "%s.%s.unknown"
+)
+
+var numberedStormRegex = regexp.MustCompile(`(?m)((\w+)\s(WARNING|WATCH)\s\d+)\s`)
 
 //go:embed weatheralert.tmpl
 var msgTemplateStr string
@@ -96,20 +106,44 @@ func (p *poller) Stop() {
 	p.wg.Wait()
 }
 
+func (p *poller) isLowerAdvisory(alertNameUpper string) bool {
+	switch {
+	case
+		strings.Contains(alertNameUpper, "RED FLAG"),
+		strings.Contains(alertNameUpper, "FIRE WEATHER"),
+		strings.Contains(alertNameUpper, "EXCESSIVE HEAT"),
+		strings.Contains(alertNameUpper, "WIND CHILL"),
+		strings.Contains(alertNameUpper, "FREEZE"):
+		return true
+	}
+	return false
+}
+
 func (p *poller) topicName(location dbmodels.WeatherPollingLocations, alert owm.Alerts) string {
 	alertNameUpper := strings.ToUpper(alert.Event)
 
 	switch {
+	case p.isLowerAdvisory(alertNameUpper):
+		return fmt.Sprintf(topicFmtAdvisory, WeatherPollerTopic, location.ZipCode)
 	case strings.Contains(alertNameUpper, "WATCH"):
-		return fmt.Sprintf("%s.%s.watch", WeatherPollerTopic, location.ZipCode)
+		return fmt.Sprintf(topicFmtWatch, WeatherPollerTopic, location.ZipCode)
 	case strings.Contains(alertNameUpper, "WARNING"):
-		return fmt.Sprintf("%s.%s.warning", WeatherPollerTopic, location.ZipCode)
+		return fmt.Sprintf(topicFmtWarning, WeatherPollerTopic, location.ZipCode)
 	case strings.Contains(alertNameUpper, "ADVISORY"):
-		return fmt.Sprintf("%s.%s.advisory", WeatherPollerTopic, location.ZipCode)
+		return fmt.Sprintf(topicFmtAdvisory, WeatherPollerTopic, location.ZipCode)
 	default:
 		p.logger.Error().Msgf("Unknown alert type: %s", alert.Event)
-		return fmt.Sprintf("%s.%s.unknown", WeatherPollerTopic, location.ZipCode)
+		return fmt.Sprintf(topicFmtUnknown, WeatherPollerTopic, location.ZipCode)
 	}
+}
+
+func (p *poller) getDedupeKey(location dbmodels.WeatherPollingLocations, alert owm.Alerts) string {
+	matches := numberedStormRegex.FindAllStringSubmatch(alert.Description, -1)
+	if len(matches) > 0 {
+		return fmt.Sprintf("%s_%s", util.FirstNonZero(location.Name, location.ZipCode), matches[0][1])
+	}
+
+	return fmt.Sprintf("%s_%s_%d", util.FirstNonZero(location.Name, location.ZipCode), alert.Event, alert.End)
 }
 
 func (p *poller) getDedupeTTL(alert owm.Alerts) time.Duration {
@@ -140,6 +174,7 @@ func (p *poller) publishWeatherForLocation(ctx context.Context, location dbmodel
 			Topic:   topicName,
 			Msg:     renderedMsg,
 			DupeTTL: p.getDedupeTTL(alert),
+			DupeKey: p.getDedupeKey(location, alert),
 		})
 	}
 
