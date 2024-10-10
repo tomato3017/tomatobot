@@ -381,8 +381,11 @@ func (n *NotificationPublisher) getChatIdsForTopic(topic string) ([]int64, error
 	defer n.sublck.RUnlock()
 
 	if ok := n.subCache.Has(topic); ok {
-		n.logger.Trace().Msgf("Cache hit for topic: %s", topic)
-		return n.subCache.Get(topic).Value(), nil
+		cacheEntry := n.subCache.Get(topic)
+		if cacheEntry != nil {
+			n.logger.Trace().Msgf("Cache hit for topic: %s", topic)
+			return cacheEntry.Value(), nil
+		}
 	}
 	n.logger.Trace().Msgf("Cache miss for topic: %s", topic)
 
