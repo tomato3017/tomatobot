@@ -77,7 +77,7 @@ func (c *DBChatLogger) purgeOldChats(ctx context.Context) error {
 }
 
 func (c *DBChatLogger) LogChats(ctx context.Context, msg tgapi.TGBotMsg) error {
-	if err := c.logUser(ctx, msg); err != nil {
+	if err := c.logUser(ctx, msg); err != nil { //todo: cache this so were not writing each time
 		return fmt.Errorf("failed to log user: %w", err)
 	}
 
@@ -133,7 +133,8 @@ func (c *DBChatLogger) logUser(ctx context.Context, msg tgapi.TGBotMsg) error {
 		UserName: msg.InnerMsg().From.UserName,
 	}
 
-	_, err := c.dbConn.NewInsert().Model(&userMdl).On("CONFLICT (id) DO NOTHING").Exec(ctx)
+	_, err := c.dbConn.NewInsert().Model(&userMdl).On("CONFLICT (id) DO UPDATE").
+		Set("username = EXCLUDED.username").Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to insert user: %w", err)
 	}
