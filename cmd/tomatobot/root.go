@@ -8,10 +8,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"github.com/oklog/run"
-	"github.com/rs/zerolog"
-	"github.com/tomato3017/tomatobot/pkg/bot"
-	"github.com/tomato3017/tomatobot/pkg/config"
 	"log"
 	"net/http"
 	"os"
@@ -19,6 +15,11 @@ import (
 	"runtime/debug"
 	"syscall"
 	"time"
+
+	"github.com/oklog/run"
+	"github.com/rs/zerolog"
+	"github.com/tomato3017/tomatobot/pkg/bot"
+	"github.com/tomato3017/tomatobot/pkg/config"
 
 	"github.com/spf13/cobra"
 )

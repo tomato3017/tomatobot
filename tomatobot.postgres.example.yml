@@ -1,0 +1,11 @@
+tomatobot:
+  loglevel: "trace"
+  debug: false
+  send_proxied_response_to_chat: true
+  database:
+    type: "postgres"
+    log_queries: false
+    connection_string: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+  modules:
+    weather:
+      polling_interval: 60s

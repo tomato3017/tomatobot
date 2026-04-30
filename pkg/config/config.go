@@ -3,10 +3,11 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"github.com/kelseyhightower/envconfig"
 	"os"
 	"slices"
 	"time"
+
+	"github.com/kelseyhightower/envconfig"
 
 	"github.com/go-playground/validator/v10"
 	"gopkg.in/yaml.v3"
@@ -87,8 +88,15 @@ func unmarshalStrict(data []byte, out interface{}) error {
 
 func NewConfig(data []byte) (Config, error) {
 	cfg := Config{}
+	expanded := os.Expand(string(data), func(key string) string {
+		if value, ok := os.LookupEnv(key); ok {
+			return value
+		}
 
-	err := unmarshalStrict(data, &cfg)
+		panic(fmt.Sprintf("Error looking up ENV key %s", key))
+	})
+
+	err := unmarshalStrict([]byte(expanded), &cfg)
 
 	if err != nil {
 		return Config{}, fmt.Errorf("failed to unmarshal config: %w", err)
