@@ -76,6 +76,11 @@ func (s *Subscriber) DbModel() *dbmodels.Subscriptions {
 	}
 }
 
+// telegramSender abstracts the tgbotapi.BotAPI.Send method for testing.
+type telegramSender interface {
+	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
+}
+
 type NotificationPublisher struct {
 	bus        chan Message
 	wg         *sync.WaitGroup
@@ -84,8 +89,9 @@ type NotificationPublisher struct {
 	subscribers []Subscriber
 	dbConn      bun.IDB
 
-	tgbot  *tgbotapi.BotAPI
-	logger zerolog.Logger
+	tgbot    *tgbotapi.BotAPI
+	tgSender telegramSender // non-nil overrides tgbot (used in tests)
+	logger   zerolog.Logger
 
 	sublck sync.RWMutex
 
@@ -333,45 +339,79 @@ func (n *NotificationPublisher) Start(ctx context.Context) error {
 	return nil
 }
 
+func (n *NotificationPublisher) send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
+	if n.tgSender != nil {
+		return n.tgSender.Send(c)
+	}
+	return n.tgbot.Send(c)
+}
+
 func (n *NotificationPublisher) handleBusMessage(ctx context.Context, msg Message) error {
 	logger := n.logger.
 		With().Str("func", "handleBusMessage").Logger()
 	logger.Trace().Msgf("Handling message for topic: %s", msg.Topic)
 
-	if err := n.hooks.Fire(ctx, msg); err != nil {
-		if errors.Is(err, ErrCancelNotification) {
-			n.logger.Trace().Msgf("notification cancelled by hook: %s", msg.Topic)
-			return nil
-		}
-		n.logger.Fatal().Err(err).Msg("unexpected error from notification hook")
-	}
-
-	// get the chat ids for the topic
 	chatIds, err := n.getChatIdsForTopic(msg.Topic)
 	if err != nil {
 		return fmt.Errorf("failed to get chat ids for topic: %w", err)
 	}
 
+	// Phase 1 — partition: build the set of fresh (non-duplicate) recipients.
+	type target struct {
+		chatId int64
+		dupKey string
+	}
+	fresh := make([]target, 0, len(chatIds))
 	for _, chatId := range chatIds {
-		n.logger.Trace().Msgf("Sending message to chat: %d", chatId)
-		// check if the message is a duplicate
+		if err := n.hooks.FirePreDupe(ctx, msg, chatId); err != nil {
+			if errors.Is(err, ErrCancelNotification) {
+				logger.Trace().Msgf("predupe hook cancelled recipient %d", chatId)
+				continue
+			}
+			logger.Error().Err(err).Msgf("predupe hook error; skipping recipient %d", chatId)
+			continue
+		}
 		dupKey := fmt.Sprintf("%d-%s", chatId, msg.DuplicationKey())
-		n.logger.Trace().Msgf("Message dupe key: %s", dupKey)
+		logger.Trace().Msgf("Message dupe key: %s", dupKey)
 		trunMsg := util.TruncateString(msg.String(), 1024, "")
-		if ok := n.dupeCache.Has(dupKey); ok {
+		if n.dupeCache.Has(dupKey) {
 			logger.Trace().Msgf("Duplicate message detected: %s", trunMsg)
 			continue
 		}
-		n.logger.Trace().Msgf("Message not a duplicate: %s", trunMsg)
+		logger.Trace().Msgf("Message not a duplicate: %s", trunMsg)
+		fresh = append(fresh, target{chatId, dupKey})
+	}
 
-		// send the message to the chat
-		_, err := n.tgbot.Send(tgbotapi.NewMessage(chatId, msg.Msg))
+	// Phase 2 — enrich: once, only when at least one recipient is fresh.
+	if len(fresh) > 0 {
+		enrichedMsg := msg
+		if err := n.hooks.FireAfterDedupe(ctx, &enrichedMsg); err != nil {
+			if errors.Is(err, ErrCancelNotification) {
+				logger.Trace().Msgf("afterdedupe hook cancelled message: %s", msg.Topic)
+				return nil
+			}
+			logger.Error().Err(err).Msg("afterdedupe hook error; sending unenriched")
+		} else {
+			msg = enrichedMsg
+		}
+	}
+
+	// Phase 3 — send: per fresh recipient, on the (possibly enriched) message.
+	for _, t := range fresh {
+		if err := n.hooks.FireOnSend(ctx, msg, t.chatId); err != nil {
+			if errors.Is(err, ErrCancelNotification) {
+				logger.Trace().Msgf("onsend hook cancelled recipient %d", t.chatId)
+				continue
+			}
+			logger.Error().Err(err).Msgf("onsend hook error; skipping recipient %d", t.chatId)
+			continue
+		}
+		logger.Trace().Msgf("Sending message to chat: %d", t.chatId)
+		_, err := n.send(tgbotapi.NewMessage(t.chatId, msg.Msg))
 		if err != nil {
 			return fmt.Errorf("failed to send message: %w", err)
 		}
-
-		// cache the message to prevent duplicates
-		n.dupeCache.Set(dupKey, struct{}{}, msg.DupeTTL)
+		n.dupeCache.Set(t.dupKey, struct{}{}, msg.DupeTTL)
 	}
 
 	return nil

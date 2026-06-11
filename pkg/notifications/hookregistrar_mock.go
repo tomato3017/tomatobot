@@ -21,16 +21,16 @@ func (_m *MockHookRegistrar) EXPECT() *MockHookRegistrar_Expecter {
 	return &MockHookRegistrar_Expecter{mock: &_m.Mock}
 }
 
-// Fire provides a mock function with given fields: ctx, msg
-func (_m *MockHookRegistrar) Fire(ctx context.Context, msg Message) error {
+// FireAfterDedupe provides a mock function with given fields: ctx, msg
+func (_m *MockHookRegistrar) FireAfterDedupe(ctx context.Context, msg *Message) error {
 	ret := _m.Called(ctx, msg)
 
 	if len(ret) == 0 {
-		panic("no return value specified for Fire")
+		panic("no return value specified for FireAfterDedupe")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, Message) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *Message) error); ok {
 		r0 = rf(ctx, msg)
 	} else {
 		r0 = ret.Error(0)
@@ -39,65 +39,229 @@ func (_m *MockHookRegistrar) Fire(ctx context.Context, msg Message) error {
 	return r0
 }
 
-// MockHookRegistrar_Fire_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Fire'
-type MockHookRegistrar_Fire_Call struct {
+// MockHookRegistrar_FireAfterDedupe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FireAfterDedupe'
+type MockHookRegistrar_FireAfterDedupe_Call struct {
 	*mock.Call
 }
 
-// Fire is a helper method to define mock.On call
+// FireAfterDedupe is a helper method to define mock.On call
 //   - ctx context.Context
-//   - msg Message
-func (_e *MockHookRegistrar_Expecter) Fire(ctx interface{}, msg interface{}) *MockHookRegistrar_Fire_Call {
-	return &MockHookRegistrar_Fire_Call{Call: _e.mock.On("Fire", ctx, msg)}
+//   - msg *Message
+func (_e *MockHookRegistrar_Expecter) FireAfterDedupe(ctx interface{}, msg interface{}) *MockHookRegistrar_FireAfterDedupe_Call {
+	return &MockHookRegistrar_FireAfterDedupe_Call{Call: _e.mock.On("FireAfterDedupe", ctx, msg)}
 }
 
-func (_c *MockHookRegistrar_Fire_Call) Run(run func(ctx context.Context, msg Message)) *MockHookRegistrar_Fire_Call {
+func (_c *MockHookRegistrar_FireAfterDedupe_Call) Run(run func(ctx context.Context, msg *Message)) *MockHookRegistrar_FireAfterDedupe_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(Message))
+		run(args[0].(context.Context), args[1].(*Message))
 	})
 	return _c
 }
 
-func (_c *MockHookRegistrar_Fire_Call) Return(_a0 error) *MockHookRegistrar_Fire_Call {
+func (_c *MockHookRegistrar_FireAfterDedupe_Call) Return(_a0 error) *MockHookRegistrar_FireAfterDedupe_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockHookRegistrar_Fire_Call) RunAndReturn(run func(context.Context, Message) error) *MockHookRegistrar_Fire_Call {
+func (_c *MockHookRegistrar_FireAfterDedupe_Call) RunAndReturn(run func(context.Context, *Message) error) *MockHookRegistrar_FireAfterDedupe_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// Register provides a mock function with given fields: topicPattern, hook
-func (_m *MockHookRegistrar) Register(topicPattern string, hook Hook) {
-	_m.Called(topicPattern, hook)
+// FireOnSend provides a mock function with given fields: ctx, msg, chatId
+func (_m *MockHookRegistrar) FireOnSend(ctx context.Context, msg Message, chatId int64) error {
+	ret := _m.Called(ctx, msg, chatId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FireOnSend")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, Message, int64) error); ok {
+		r0 = rf(ctx, msg, chatId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
-// MockHookRegistrar_Register_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Register'
-type MockHookRegistrar_Register_Call struct {
+// MockHookRegistrar_FireOnSend_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FireOnSend'
+type MockHookRegistrar_FireOnSend_Call struct {
 	*mock.Call
 }
 
-// Register is a helper method to define mock.On call
-//   - topicPattern string
-//   - hook Hook
-func (_e *MockHookRegistrar_Expecter) Register(topicPattern interface{}, hook interface{}) *MockHookRegistrar_Register_Call {
-	return &MockHookRegistrar_Register_Call{Call: _e.mock.On("Register", topicPattern, hook)}
+// FireOnSend is a helper method to define mock.On call
+//   - ctx context.Context
+//   - msg Message
+//   - chatId int64
+func (_e *MockHookRegistrar_Expecter) FireOnSend(ctx interface{}, msg interface{}, chatId interface{}) *MockHookRegistrar_FireOnSend_Call {
+	return &MockHookRegistrar_FireOnSend_Call{Call: _e.mock.On("FireOnSend", ctx, msg, chatId)}
 }
 
-func (_c *MockHookRegistrar_Register_Call) Run(run func(topicPattern string, hook Hook)) *MockHookRegistrar_Register_Call {
+func (_c *MockHookRegistrar_FireOnSend_Call) Run(run func(ctx context.Context, msg Message, chatId int64)) *MockHookRegistrar_FireOnSend_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(Message), args[2].(int64))
+	})
+	return _c
+}
+
+func (_c *MockHookRegistrar_FireOnSend_Call) Return(_a0 error) *MockHookRegistrar_FireOnSend_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockHookRegistrar_FireOnSend_Call) RunAndReturn(run func(context.Context, Message, int64) error) *MockHookRegistrar_FireOnSend_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FirePreDupe provides a mock function with given fields: ctx, msg, chatId
+func (_m *MockHookRegistrar) FirePreDupe(ctx context.Context, msg Message, chatId int64) error {
+	ret := _m.Called(ctx, msg, chatId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FirePreDupe")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, Message, int64) error); ok {
+		r0 = rf(ctx, msg, chatId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockHookRegistrar_FirePreDupe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FirePreDupe'
+type MockHookRegistrar_FirePreDupe_Call struct {
+	*mock.Call
+}
+
+// FirePreDupe is a helper method to define mock.On call
+//   - ctx context.Context
+//   - msg Message
+//   - chatId int64
+func (_e *MockHookRegistrar_Expecter) FirePreDupe(ctx interface{}, msg interface{}, chatId interface{}) *MockHookRegistrar_FirePreDupe_Call {
+	return &MockHookRegistrar_FirePreDupe_Call{Call: _e.mock.On("FirePreDupe", ctx, msg, chatId)}
+}
+
+func (_c *MockHookRegistrar_FirePreDupe_Call) Run(run func(ctx context.Context, msg Message, chatId int64)) *MockHookRegistrar_FirePreDupe_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(Message), args[2].(int64))
+	})
+	return _c
+}
+
+func (_c *MockHookRegistrar_FirePreDupe_Call) Return(_a0 error) *MockHookRegistrar_FirePreDupe_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockHookRegistrar_FirePreDupe_Call) RunAndReturn(run func(context.Context, Message, int64) error) *MockHookRegistrar_FirePreDupe_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RegisterAfterDedupe provides a mock function with given fields: topicPattern, hook
+func (_m *MockHookRegistrar) RegisterAfterDedupe(topicPattern string, hook EnrichHook) {
+	_m.Called(topicPattern, hook)
+}
+
+// MockHookRegistrar_RegisterAfterDedupe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterAfterDedupe'
+type MockHookRegistrar_RegisterAfterDedupe_Call struct {
+	*mock.Call
+}
+
+// RegisterAfterDedupe is a helper method to define mock.On call
+//   - topicPattern string
+//   - hook EnrichHook
+func (_e *MockHookRegistrar_Expecter) RegisterAfterDedupe(topicPattern interface{}, hook interface{}) *MockHookRegistrar_RegisterAfterDedupe_Call {
+	return &MockHookRegistrar_RegisterAfterDedupe_Call{Call: _e.mock.On("RegisterAfterDedupe", topicPattern, hook)}
+}
+
+func (_c *MockHookRegistrar_RegisterAfterDedupe_Call) Run(run func(topicPattern string, hook EnrichHook)) *MockHookRegistrar_RegisterAfterDedupe_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(EnrichHook))
+	})
+	return _c
+}
+
+func (_c *MockHookRegistrar_RegisterAfterDedupe_Call) Return() *MockHookRegistrar_RegisterAfterDedupe_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockHookRegistrar_RegisterAfterDedupe_Call) RunAndReturn(run func(string, EnrichHook)) *MockHookRegistrar_RegisterAfterDedupe_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RegisterOnSend provides a mock function with given fields: topicPattern, hook
+func (_m *MockHookRegistrar) RegisterOnSend(topicPattern string, hook Hook) {
+	_m.Called(topicPattern, hook)
+}
+
+// MockHookRegistrar_RegisterOnSend_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterOnSend'
+type MockHookRegistrar_RegisterOnSend_Call struct {
+	*mock.Call
+}
+
+// RegisterOnSend is a helper method to define mock.On call
+//   - topicPattern string
+//   - hook Hook
+func (_e *MockHookRegistrar_Expecter) RegisterOnSend(topicPattern interface{}, hook interface{}) *MockHookRegistrar_RegisterOnSend_Call {
+	return &MockHookRegistrar_RegisterOnSend_Call{Call: _e.mock.On("RegisterOnSend", topicPattern, hook)}
+}
+
+func (_c *MockHookRegistrar_RegisterOnSend_Call) Run(run func(topicPattern string, hook Hook)) *MockHookRegistrar_RegisterOnSend_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(string), args[1].(Hook))
 	})
 	return _c
 }
 
-func (_c *MockHookRegistrar_Register_Call) Return() *MockHookRegistrar_Register_Call {
+func (_c *MockHookRegistrar_RegisterOnSend_Call) Return() *MockHookRegistrar_RegisterOnSend_Call {
 	_c.Call.Return()
 	return _c
 }
 
-func (_c *MockHookRegistrar_Register_Call) RunAndReturn(run func(string, Hook)) *MockHookRegistrar_Register_Call {
+func (_c *MockHookRegistrar_RegisterOnSend_Call) RunAndReturn(run func(string, Hook)) *MockHookRegistrar_RegisterOnSend_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RegisterPreDupe provides a mock function with given fields: topicPattern, hook
+func (_m *MockHookRegistrar) RegisterPreDupe(topicPattern string, hook Hook) {
+	_m.Called(topicPattern, hook)
+}
+
+// MockHookRegistrar_RegisterPreDupe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterPreDupe'
+type MockHookRegistrar_RegisterPreDupe_Call struct {
+	*mock.Call
+}
+
+// RegisterPreDupe is a helper method to define mock.On call
+//   - topicPattern string
+//   - hook Hook
+func (_e *MockHookRegistrar_Expecter) RegisterPreDupe(topicPattern interface{}, hook interface{}) *MockHookRegistrar_RegisterPreDupe_Call {
+	return &MockHookRegistrar_RegisterPreDupe_Call{Call: _e.mock.On("RegisterPreDupe", topicPattern, hook)}
+}
+
+func (_c *MockHookRegistrar_RegisterPreDupe_Call) Run(run func(topicPattern string, hook Hook)) *MockHookRegistrar_RegisterPreDupe_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(Hook))
+	})
+	return _c
+}
+
+func (_c *MockHookRegistrar_RegisterPreDupe_Call) Return() *MockHookRegistrar_RegisterPreDupe_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockHookRegistrar_RegisterPreDupe_Call) RunAndReturn(run func(string, Hook)) *MockHookRegistrar_RegisterPreDupe_Call {
 	_c.Call.Return(run)
 	return _c
 }

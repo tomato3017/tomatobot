@@ -23,8 +23,9 @@ const _TextData_name = "TextDataTextTextDataAnimationTextDataAudioTextDataDocume
 var _TextData_index = [...]uint8{0, 12, 29, 42, 58, 71, 86, 99, 112}
 
 func (i TextData) String() string {
-	if i < 0 || i >= TextData(len(_TextData_index)-1) {
+	idx := int(i) - 0
+	if i < 0 || idx >= len(_TextData_index)-1 {
 		return "TextData(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _TextData_name[_TextData_index[i]:_TextData_index[i+1]]
+	return _TextData_name[_TextData_index[idx]:_TextData_index[idx+1]]
 }
