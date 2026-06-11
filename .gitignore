@@ -19,3 +19,9 @@
 bin/
 dev/
 tomatobot.yml
+
+# AI tool config directories
+.claude/
+.codex/
+.cursor/
+.opencode/
