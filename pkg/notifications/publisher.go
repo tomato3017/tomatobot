@@ -91,6 +91,8 @@ type NotificationPublisher struct {
 
 	subCache  *ttlcache.Cache[string, []int64]
 	dupeCache *ttlcache.Cache[string, struct{}]
+
+	hooks HookRegistrar
 }
 
 var _ Publisher = &NotificationPublisher{}
@@ -104,6 +106,7 @@ func NewNotificationPublisher(tgbot *tgbotapi.BotAPI, dbConn bun.IDB, options ..
 		dbConn:      dbConn,
 		dupeCache:   ttlcache.New[string, struct{}](ttlcache.WithTTL[string, struct{}](5 * time.Minute)),
 		subCache:    ttlcache.New[string, []int64](ttlcache.WithTTL[string, []int64](5 * time.Minute)),
+		hooks:       newHookRegistrar(),
 	}
 	if err := publisher.populateDupeCache(); err != nil {
 		publisher.logger.Fatal().Err(err).Msg("failed to populate dupe cache")
@@ -334,6 +337,14 @@ func (n *NotificationPublisher) handleBusMessage(ctx context.Context, msg Messag
 	logger := n.logger.
 		With().Str("func", "handleBusMessage").Logger()
 	logger.Trace().Msgf("Handling message for topic: %s", msg.Topic)
+
+	if err := n.hooks.Fire(ctx, msg); err != nil {
+		if errors.Is(err, ErrCancelNotification) {
+			n.logger.Trace().Msgf("notification cancelled by hook: %s", msg.Topic)
+			return nil
+		}
+		n.logger.Fatal().Err(err).Msg("unexpected error from notification hook")
+	}
 
 	// get the chat ids for the topic
 	chatIds, err := n.getChatIdsForTopic(msg.Topic)
