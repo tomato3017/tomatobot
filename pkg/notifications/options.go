@@ -34,3 +34,11 @@ func WithDupeCacheTTL(ttl time.Duration) PublisherOptions {
 			ttlcache.WithTTL[string, struct{}](ttl))
 	}
 }
+
+func WithHookRegistrar(r HookRegistrar) PublisherOptions {
+	return func(p *NotificationPublisher) {
+		if r != nil {
+			p.hooks = r
+		}
+	}
+}
