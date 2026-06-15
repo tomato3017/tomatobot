@@ -111,8 +111,6 @@ import (
    defer util.CloseSafely(res.Body)
    ```
 
-6. Reserve `logger.Fatal()` and `log.Fatalf()` for truly unrecoverable init failures only.
-
 ### Logging
 
 Use `zerolog` structured logging everywhere. Obtain a logger from context or struct fields:

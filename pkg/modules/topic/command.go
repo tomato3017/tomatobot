@@ -51,5 +51,10 @@ func newTopicCmd(publisher notifications.Publisher, botProxy proxy.TGBotImplemen
 		return nil, fmt.Errorf("unable to register subcommand %s. Err: %w", "list", err)
 	}
 
+	err = topicCmd.RegisterSubcommand("publish", newTopicPublishCmd(publisher, botProxy, logger))
+	if err != nil {
+		return nil, fmt.Errorf("unable to register subcommand %s. Err: %w", "publish", err)
+	}
+
 	return &topicCmd, nil
 }
